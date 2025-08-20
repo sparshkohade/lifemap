@@ -39,3 +39,18 @@ LifeMap is a full-stack web application that helps users **plan, track, and visu
    ```bash
    git clone https://github.com/sparshkohade/lifemap.git
    cd lifemap
+
+# Setup backend
+    cd backend
+    npm install
+
+# Setup frontend
+    cd ../frontend
+    npm install
+
+# Run development servers
+    # Backend
+    npm run dev
+    
+    # Frontend
+    npm run dev
