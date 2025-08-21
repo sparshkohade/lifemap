@@ -2,16 +2,16 @@
 node_modules/
 
 # Environment files
-.env
-backend/.env
-frontend/.env
+# .env
+# backend/.env
+# frontend/.env
 
 # Firebase service account keys
-backend/config/serviceAccountKey.json
+# backend/config/serviceAccountKey.json
 
 # Build outputs
-dist/
-build/
+# dist/
+# build/
 
 # Logs
 npm-debug.log*
