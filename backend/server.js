@@ -4,6 +4,8 @@ import mongoose from "mongoose";
 import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
 import goalRoutes from "./routes/goalRoutes.js";
+import quizRoutes from "./routes/quizRoutes.js";
+import roadmapRoutes from "./routes/roadmapRoutes.js";
 
 
 dotenv.config();
@@ -15,6 +17,8 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/goals", goalRoutes);
 app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use("/api/quiz", quizRoutes);
+app.use("/api/roadmap", roadmapRoutes);
 
 
 

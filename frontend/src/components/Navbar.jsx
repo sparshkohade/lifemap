@@ -1,11 +1,12 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { auth, signOut, provider, signInWithPopup } from "../firebase";
 import axios from "axios";
-import { FcGoogle } from "react-icons/fc"; // ✅ Google icon
+import { FcGoogle } from "react-icons/fc";
 
 export default function Navbar() {
   const navigate = useNavigate();
+  const location = useLocation(); // ✅ to highlight active page
   const user = JSON.parse(localStorage.getItem("user"));
 
   // Logout
@@ -34,6 +35,12 @@ export default function Navbar() {
     }
   };
 
+  // Helper to highlight active link
+  const linkClasses = (path) =>
+    `hover:text-blue-600 ${
+      location.pathname === path ? "text-blue-600 font-semibold" : "text-gray-700"
+    }`;
+
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto flex justify-between items-center py-4 px-6">
@@ -43,11 +50,11 @@ export default function Navbar() {
         </Link>
 
         {/* Nav Links */}
-        <nav className="space-x-6 font-medium text-gray-700">
-          <Link to="/" className="hover:text-blue-600">Home</Link>
-          <Link to="/goals" className="hover:text-blue-600">Goals</Link>
-          <Link to="/roadmap" className="hover:text-blue-600">Roadmap</Link>
-          <Link to="/dashboard" className="hover:text-blue-600">Dashboard</Link>
+        <nav className="space-x-6 font-medium">
+          <Link to="/" className={linkClasses("/")}>Home</Link>
+          <Link to="/goals" className={linkClasses("/goals")}>Goals</Link>
+          <Link to="/roadmap" className={linkClasses("/roadmap")}>Roadmap</Link>
+          <Link to="/dashboard" className={linkClasses("/dashboard")}>Dashboard</Link>
         </nav>
 
         {/* Auth Buttons */}
@@ -80,7 +87,7 @@ export default function Navbar() {
                 onClick={handleGoogleLogin}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
               >
-                <FcGoogle size={22} /> {/* ✅ Google "G" icon */}
+                <FcGoogle size={22} />
                 <span className="font-medium">Sign in</span>
               </button>
             </>

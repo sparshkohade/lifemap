@@ -1,243 +1,433 @@
 // frontend/src/pages/Home.jsx
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Map,
+  Users,
+  Settings,
+  TrendingUp,
+  UserCheck,
+  Calendar,
+  ChevronDown,
+  CheckCircle2,
+} from "lucide-react";
 
-// ✅ Simple Button
+/* -------------------- Reusable UI -------------------- */
 const Button = ({ children, className = "", ...props }) => (
   <button
-    className={`bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-xl shadow-md transition ${className}`}
     {...props}
+    className={`px-6 py-3 rounded-xl font-medium shadow-md transition bg-blue-600 text-white hover:bg-blue-700 ${className}`}
   >
     {children}
   </button>
 );
 
-// ✅ Simple Card
-const Card = ({ children, className = "" }) => (
-  <div className={`bg-white rounded-xl border border-gray-200 shadow-sm ${className}`}>
-    {children}
+const SectionTitle = ({ eyebrow, title, subtitle }) => (
+  <div className="text-center max-w-3xl mx-auto">
+    {eyebrow ? (
+      <p className="text-xs tracking-widest uppercase text-blue-600 mb-2">
+        {eyebrow}
+      </p>
+    ) : null}
+    <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">{title}</h2>
+    {subtitle ? (
+      <p className="mt-4 text-gray-600">{subtitle}</p>
+    ) : null}
   </div>
 );
 
-const CardContent = ({ children, className = "" }) => (
-  <div className={`p-6 ${className}`}>{children}</div>
-);
-
-// ✅ Simple ChevronDown Icon (inline SVG)
-const ChevronDown = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    className="h-5 w-5 inline-block ml-2 text-gray-500"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth={2}
+const Card = ({ className = "", children }) => (
+  <motion.div
+    whileHover={{ scale: 1.02 }}
+    className={`rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition ${className}`}
   >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-  </svg>
+    {children}
+  </motion.div>
 );
 
+/* FAQ Accordion with smooth animation */
+const FAQItem = ({ q, a }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+      <button
+        className="w-full flex items-center justify-between text-left p-5"
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="text-base sm:text-lg font-semibold text-gray-900">
+          {q}
+        </span>
+        <ChevronDown
+          className={`h-5 w-5 transition-transform ${
+            open ? "rotate-180 text-blue-600" : "text-gray-500"
+          }`}
+        />
+      </button>
+
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            key="content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-5 pt-0 text-gray-600">{a}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+/* -------------------- Page -------------------- */
 export default function Home() {
   return (
-    <div className="bg-gray-50 text-gray-900">
-      {/* ✅ Hero Section */}
-      <section className="py-20 px-6 md:px-20 text-center bg-white border-b border-gray-200">
+    <div className="bg-white text-gray-900">
+      {/* 1) Hero */}
+      <section className="relative text-center py-20 md:py-24 px-6 bg-gradient-to-b from-blue-50 to-white overflow-hidden">
+        {/* subtle background orbs */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-16 -left-16 h-48 w-48 rounded-full bg-blue-100 blur-3xl opacity-60" />
+          <div className="absolute bottom-0 right-0 h-56 w-56 rounded-full bg-blue-100 blur-3xl opacity-60" />
+        </div>
+
         <motion.h1
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="text-5xl font-extrabold mb-6 text-blue-700"
+          className="relative z-10 text-4xl sm:text-5xl md:text-6xl font-extrabold text-gray-900"
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7 }}
         >
-          Welcome to LifeMap 🌍
+          Build Your Career Path with{" "}
+          <span className="text-blue-600">LifeMap</span>
         </motion.h1>
-        <p className="text-lg md:text-xl max-w-2xl mx-auto text-gray-700 mb-8">
-          Your personal career roadmap builder. Plan your journey, break it into
-          milestones, and achieve your goals with clarity and confidence.
-        </p>
-        <Button className="text-lg px-8 py-4">Get Started</Button>
-      </section>
 
-      {/* ✅ About Section */}
-      <section className="py-16 px-6 md:px-20 text-center bg-gray-50">
-        <motion.h2
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.6 }}
-          className="text-4xl font-bold mb-6"
+        <motion.p
+          className="relative z-10 mt-6 max-w-2xl mx-auto text-base sm:text-lg md:text-xl text-gray-600"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.1 }}
         >
-          About LifeMap
-        </motion.h2>
-        <p className="text-lg max-w-3xl mx-auto text-gray-700 leading-relaxed">
-          LifeMap helps you take control of your personal and professional
-          growth. Whether you want to learn a new skill, land your dream job,
-          or start a business, LifeMap gives you the structure you need. 
-          <br /><br />
-          With visual roadmaps, milestone tracking, and a supportive
-          community, you’ll never feel lost or unmotivated again.
-        </p>
+          Plan goals, break them into milestones, track progress visually, and
+          connect with mentors & peers — all in one place.
+        </motion.p>
+
+        <motion.div
+          className="relative z-10 mt-8 flex justify-center gap-4"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          <Button className="text-base sm:text-lg px-6 sm:px-8 py-3">
+            Get Started
+          </Button>
+          <a
+            href="#about"
+            className="px-6 sm:px-8 py-3 rounded-xl font-medium shadow-sm border border-blue-600 text-blue-600 hover:bg-blue-50 transition"
+          >
+            Learn More
+          </a>
+        </motion.div>
+
+        {/* micro trust badges */}
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-gray-500">
+          <span className="inline-flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-blue-600" /> No credit card required
+          </span>
+          <span>•</span>
+          <span className="inline-flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-blue-600" /> Private & secure
+          </span>
+          <span>•</span>
+          <span className="inline-flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-blue-600" /> 5-minute setup
+          </span>
+        </div>
       </section>
 
-      {/* ✅ Why Choose LifeMap Section */}
-      <section className="py-16 px-6 md:px-20 bg-white border-y border-gray-200">
-        <h2 className="text-4xl font-bold text-center mb-12">Why Choose LifeMap?</h2>
-        <div className="grid md:grid-cols-3 gap-8">
+      {/* 2) Services */}
+      <section id="services" className="py-20 px-6">
+        <SectionTitle
+          eyebrow="What we offer"
+          title="Our Services"
+          subtitle="Everything you need to map, manage, and achieve your goals."
+        />
+        <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
           {[
             {
-              title: "Clarity & Direction",
-              desc: "Turn vague ambitions into structured roadmaps with milestones you can follow step by step.",
+              icon: Map,
+              title: "Visual Roadmapping",
+              desc:
+                "Design interactive roadmaps for each goal. Drag, reorder, and color-code milestones for instant clarity.",
             },
             {
-              title: "Stay Motivated",
-              desc: "Celebrate progress as you achieve milestones and see your growth visually.",
-            },
-            {
+              icon: Users,
               title: "Community Support",
-              desc: "Connect with like-minded people, share experiences, and learn from others’ journeys.",
-            },
-          ].map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.2 }}
-              className="bg-gray-50 p-6 rounded-xl shadow-sm border border-gray-200"
-            >
-              <h3 className="text-2xl font-semibold text-blue-600 mb-3">
-                {item.title}
-              </h3>
-              <p className="text-gray-600">{item.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* ✅ Who Is LifeMap For Section */}
-      <section className="py-16 px-6 md:px-20 bg-gray-50">
-        <h2 className="text-4xl font-bold text-center mb-12">Who Is LifeMap For?</h2>
-        <div className="grid md:grid-cols-3 gap-8 text-center">
-          {[
-            {
-              icon: "🎓",
-              title: "Students",
-              desc: "Plan your academic path, prepare for exams, and set goals for higher education or career entry.",
+              desc:
+                "Join groups, share progress, and learn from peers following similar paths and industries.",
             },
             {
-              icon: "💼",
-              title: "Professionals",
-              desc: "Track promotions, skill upgrades, certifications, and career shifts with a clear roadmap.",
+              icon: Settings,
+              title: "Smart Tools",
+              desc:
+                "Use AI-assisted suggestions to break complex goals into actionable, time-bound steps.",
             },
             {
-              icon: "🚀",
-              title: "Entrepreneurs",
-              desc: "Map out your startup journey — from idea to launch to scaling your business successfully.",
-            },
-          ].map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.2 }}
-              className="bg-white rounded-xl p-8 shadow-sm border border-gray-200"
-            >
-              <div className="text-5xl mb-4">{item.icon}</div>
-              <h3 className="text-2xl font-semibold text-blue-600 mb-2">
-                {item.title}
-              </h3>
-              <p className="text-gray-600">{item.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* ✅ How It Works Section */}
-      <section className="py-16 px-6 md:px-20 bg-white border-t border-gray-200">
-        <h2 className="text-4xl font-bold text-center mb-12">How It Works</h2>
-        <div className="grid md:grid-cols-4 gap-6 text-center">
-          {[
-            {
-              step: "1",
-              title: "Define Your Goal 🎯",
-              desc: "Set a clear objective that you want to achieve.",
+              icon: TrendingUp,
+              title: "Progress Tracker",
+              desc:
+                "View streaks, completion rates, and milestone timelines to stay accountable and motivated.",
             },
             {
-              step: "2",
-              title: "Break It Down 🛤️",
-              desc: "Split your big goal into smaller, realistic milestones.",
+              icon: UserCheck,
+              title: "Mentor Connect",
+              desc:
+                "Find mentors by domain, availability, and expertise. Book slots and track mentor feedback.",
             },
             {
-              step: "3",
-              title: "Track Progress ✅",
-              desc: "Use visual progress tracking tools to stay motivated.",
+              icon: Calendar,
+              title: "Personal Planner",
+              desc:
+                "Sync deadlines to a simple weekly planner. Get gentle reminders before milestones are due.",
             },
-            {
-              step: "4",
-              title: "Connect & Share 🌍",
-              desc: "Engage with others pursuing similar journeys.",
-            },
-          ].map((item, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 40 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.2 }}
-              className="bg-gray-50 rounded-xl p-6 shadow-sm border border-gray-200"
-            >
-              <h3 className="text-xl font-semibold text-blue-600 mb-2">
-                Step {item.step}: {item.title}
-              </h3>
-              <p className="text-gray-600">{item.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {/* ✅ FAQ Section */}
-      <section className="py-16 px-6 md:px-20 bg-gray-50 border-t border-gray-200">
-        <h2 className="text-4xl font-bold text-center mb-10">FAQ</h2>
-        <div className="max-w-3xl mx-auto space-y-4">
-          {[
-            {
-              q: "Is LifeMap free to use?",
-              a: "Yes, LifeMap is free to use for individuals. Optional premium features may be added later.",
-            },
-            {
-              q: "Can I collaborate with others?",
-              a: "Yes, the upcoming community feature will allow shared roadmaps and teamwork.",
-            },
-            {
-              q: "How does progress tracking work?",
-              a: "You can create milestones under each goal and mark them as completed when achieved.",
-            },
-          ].map((faq, i) => (
-            <Card key={i}>
-              <CardContent>
-                <details className="cursor-pointer">
-                  <summary className="flex justify-between items-center text-lg font-semibold">
-                    {faq.q} <ChevronDown />
-                  </summary>
-                  <p className="mt-3 text-gray-600">{faq.a}</p>
-                </details>
-              </CardContent>
+          ].map((s, i) => (
+            <Card key={i} className="p-6">
+              <s.icon className="h-12 w-12 text-blue-600 mb-4" />
+              <h3 className="text-xl sm:text-2xl font-semibold">{s.title}</h3>
+              <p className="mt-2 text-gray-600">{s.desc}</p>
             </Card>
           ))}
         </div>
       </section>
 
-      {/* ✅ Call to Action Footer */}
-      <section className="py-20 px-6 md:px-20 text-center bg-white border-t border-gray-200">
-        <motion.h2
-          initial={{ opacity: 0, scale: 0.8 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.6 }}
-          className="text-4xl font-bold mb-6 text-blue-700"
-        >
-          Start Your Journey Today 🚀
-        </motion.h2>
-        <p className="mb-8 text-lg text-gray-700 max-w-2xl mx-auto">
-          Build your career roadmap, stay consistent, and achieve your dreams
-          step by step with LifeMap.
+      {/* 3) Why Choose */}
+      <section className="py-20 px-6 bg-gray-50">
+        <SectionTitle
+          eyebrow="Why LifeMap"
+          title="Clarity, Momentum, Community"
+          subtitle="We combine visual planning, gentle accountability, and supportive networks."
+        />
+        <div className="mt-12 grid gap-8 md:grid-cols-3 max-w-6xl mx-auto">
+          {[
+            {
+              title: "Structure without friction",
+              desc:
+                "Use ready-made templates for common goals. Edit on the fly with zero setup overhead.",
+            },
+            {
+              title: "Momentum you can see",
+              desc:
+                "Milestones and progress bars make your wins visible. Small steps compound into big results.",
+            },
+            {
+              title: "Never go alone",
+              desc:
+                "Tap into the community and mentors for advice, feedback, and accountability when you need it.",
+            },
+          ].map((item, i) => (
+            <Card key={i} className="p-6 bg-white">
+              <h3 className="text-lg sm:text-xl font-semibold text-blue-600">
+                {item.title}
+              </h3>
+              <p className="mt-2 text-gray-600">{item.desc}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* 4) Who Is LifeMap For */}
+      <section className="py-20 px-6">
+        <SectionTitle
+          eyebrow="Who benefits"
+          title="Who Is LifeMap For?"
+          subtitle="Students, professionals, and builders—anyone ready to grow with a clear, visual plan."
+        />
+        <div className="mt-12 grid gap-8 md:grid-cols-3 max-w-6xl mx-auto text-center">
+          {[
+            {
+              emoji: "🎓",
+              title: "Students",
+              desc:
+                "Map semesters, prep for exams, plan internships, and build a skills portfolio that stands out.",
+            },
+            {
+              emoji: "💼",
+              title: "Professionals",
+              desc:
+                "Plan promotions, certifications, and skill upgrades with quarterly milestones and reviews.",
+            },
+            {
+              emoji: "🚀",
+              title: "Entrepreneurs",
+              desc:
+                "Go from idea to launch with validation sprints, MVP milestones, and go-to-market checklists.",
+            },
+          ].map((p, i) => (
+            <Card key={i} className="p-8">
+              <div className="text-5xl mb-3">{p.emoji}</div>
+              <h3 className="text-xl sm:text-2xl font-semibold text-blue-600">
+                {p.title}
+              </h3>
+              <p className="mt-2 text-gray-600">{p.desc}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* 5) About (moved down) */}
+      <section id="about" className="py-20 px-6 bg-gray-50">
+        <SectionTitle
+          eyebrow="About"
+          title="What is LifeMap?"
+          subtitle="A visual roadmap builder with community and mentorship built-in—so you always know the next step."
+        />
+        <div className="mt-10 max-w-5xl mx-auto grid gap-6 md:grid-cols-2">
+          <Card className="p-6">
+            <h4 className="text-lg font-semibold text-blue-600">
+              Built for clarity
+            </h4>
+            <p className="mt-2 text-gray-600">
+              We turn fuzzy goals into clear, staged plans. Each milestone has
+              context, dependencies, and deadlines that make progress tangible.
+            </p>
+          </Card>
+          <Card className="p-6">
+            <h4 className="text-lg font-semibold text-blue-600">
+              Designed for follow-through
+            </h4>
+            <p className="mt-2 text-gray-600">
+              Streaks, reminders, and community check-ins help you maintain
+              momentum—even when life gets busy.
+            </p>
+          </Card>
+        </div>
+      </section>
+
+      {/* 6) How It Works + Roadmap Preview */}
+      <section className="py-20 px-6">
+        <SectionTitle
+          eyebrow="Get started fast"
+          title="How It Works"
+          subtitle="Define → Break down → Track → Get support. Repeat."
+        />
+
+        {/* Steps */}
+        <div className="mt-10 grid gap-6 md:grid-cols-4 max-w-6xl mx-auto text-center">
+          {[
+            { step: "1", title: "Define Your Goal", hint: "Be specific & time-bound." },
+            { step: "2", title: "Break It Down", hint: "Convert into 3–7 milestones." },
+            { step: "3", title: "Track Progress", hint: "Update status weekly." },
+            { step: "4", title: "Connect & Share", hint: "Ask mentors for feedback." },
+          ].map((s, i) => (
+            <Card key={i} className="p-6 bg-gray-50">
+              <h3 className="text-base font-semibold text-blue-600">
+                Step {s.step}
+              </h3>
+              <p className="mt-1 text-lg sm:text-xl font-semibold text-gray-900">
+                {s.title} 🎯
+              </p>
+              <p className="mt-2 text-gray-600">{s.hint}</p>
+            </Card>
+          ))}
+        </div>
+
+        {/* Visual Roadmap Preview (mock) */}
+        <div className="mt-12 max-w-4xl mx-auto">
+          <Card className="p-6">
+            <h4 className="text-lg sm:text-xl font-semibold text-gray-900">
+              Roadmap Preview
+            </h4>
+            <p className="mt-2 text-gray-600">
+              A simple snapshot of how milestones line up over time.
+            </p>
+
+            {/* timeline */}
+            <div className="mt-6">
+              <div className="relative h-2 bg-gray-200 rounded-full">
+                <div className="absolute left-0 top-0 h-2 bg-blue-600 rounded-full w-1/3" />
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {[
+                  { label: "Milestone 1", desc: "Research & outline", done: true },
+                  { label: "Milestone 2", desc: "Build MVP features", done: false },
+                  { label: "Milestone 3", desc: "User testing & feedback", done: false },
+                ].map((m, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-xl border p-4 ${
+                      m.done
+                        ? "border-blue-200 bg-blue-50"
+                        : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      {m.done ? (
+                        <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                      ) : (
+                        <span className="h-5 w-5 rounded-full border border-gray-300" />
+                      )}
+                      <span className="text-sm font-semibold text-gray-900">
+                        {m.label}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-600">{m.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </div>
+      </section>
+
+      {/* 7) FAQ */}
+      <section className="py-20 px-6 bg-gray-50">
+        <SectionTitle
+          eyebrow="Answers"
+          title="Frequently Asked Questions"
+          subtitle="If you can’t find what you’re looking for, ping us from the footer."
+        />
+        <div className="mt-8 max-w-3xl mx-auto space-y-4">
+          {[
+            {
+              q: "Is LifeMap free to use?",
+              a:
+                "Yes. The free plan covers personal roadmaps, progress tracking, and community access. Pro adds advanced analytics, mentor slots, and templates.",
+            },
+            {
+              q: "Can I collaborate with others?",
+              a:
+                "Absolutely. You can invite peers to view or comment on your roadmap, and join groups to share updates and get feedback.",
+            },
+            {
+              q: "Is my data secure?",
+              a:
+                "We prioritize privacy and security. Your data is encrypted in transit and at rest, and you control what is shared.",
+            },
+          ].map((f, i) => (
+            <FAQItem key={i} q={f.q} a={f.a} />
+          ))}
+        </div>
+      </section>
+
+      {/* 8) CTA Footer */}
+      <section className="py-16 px-6 bg-blue-600 text-white text-center">
+        <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold">
+          Ready to Start Your Journey?
+        </h2>
+        <p className="mt-4 text-base sm:text-lg max-w-2xl mx-auto text-blue-50">
+          Join LifeMap today and take the first step toward achieving your goals.
         </p>
-        <Button className="text-lg px-8 py-4">Sign Up Now</Button>
+        <div className="mt-8">
+          <a
+            href="#"
+            className="px-6 py-3 rounded-xl bg-white text-blue-600 font-medium hover:bg-gray-100 transition inline-block"
+          >
+            Sign Up Now
+          </a>
+        </div>
       </section>
     </div>
   );
