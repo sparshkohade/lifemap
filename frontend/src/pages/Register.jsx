@@ -1,37 +1,81 @@
-import React, { useState } from "react";
+// src/pages/Register.jsx
+import React, { useState, useContext } from "react";
 import API from "../utils/api";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
+
+// Firebase + google auth
+import { auth, provider, signInWithPopup } from "../firebase";
+import axios from "axios";
+import { FcGoogle } from "react-icons/fc";
+
+import { ThemeContext } from "../context/ThemeContext";
 
 export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { theme } = useContext(ThemeContext);
 
+  // Normal registration
   const handleRegister = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
     try {
       const { data } = await API.post("/auth/register", { name, email, password });
       localStorage.setItem("user", JSON.stringify(data));
       navigate("/goals");
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Google (register/login) — same backend endpoint used for Google tokens
+  const handleGoogleRegister = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const token = await result.user.getIdToken();
+      // backend verifies/creates user and returns user payload
+      const { data } = await axios.post("http://localhost:5000/api/auth/google", { token });
+      localStorage.setItem("user", JSON.stringify(data));
+      navigate("/goals");
+    } catch (err) {
+      console.error("Google auth failed:", err);
+      setError("Google sign-in failed");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+    <div
+      className={`min-h-screen flex items-center justify-center transition-colors duration-300
+        ${theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"}`}
+    >
+      <div
+        className={`p-8 rounded-xl shadow-lg w-full max-w-md transition-colors duration-300
+          ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
+      >
         <h2 className="text-2xl font-bold text-center mb-6 text-blue-600">Sign Up</h2>
-        {error && <p className="text-red-600 mb-4">{error}</p>}
+
+        {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+
         <form onSubmit={handleRegister} className="space-y-4">
           <input
             type="text"
             placeholder="Full Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600
+                       text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
           <input
@@ -39,7 +83,9 @@ export default function Register() {
             placeholder="Email Address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600
+                       text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
           <input
@@ -47,19 +93,44 @@ export default function Register() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600
+                       text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400
+                       focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
+
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-60"
           >
-            Create Account
+            {loading ? "Creating..." : "Create Account"}
           </button>
         </form>
-        <p className="mt-4 text-center text-gray-600">
+
+        {/* Divider */}
+        <div className="flex items-center my-6">
+          <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
+          <p className="px-3 text-gray-500 text-sm">or</p>
+          <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
+        </div>
+
+        {/* Google button */}
+        <button
+          onClick={handleGoogleRegister}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600
+                     hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-60"
+        >
+          <FcGoogle size={22} />
+          <span className="font-medium">Continue with Google</span>
+        </button>
+
+        <p className="mt-4 text-center text-gray-600 dark:text-gray-400">
           Already have an account?{" "}
-          <a href="/login" className="text-blue-600 hover:underline">Login</a>
+          <Link to="/login" className="text-blue-600 hover:underline">
+            Login
+          </Link>
         </p>
       </div>
     </div>
