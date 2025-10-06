@@ -1,67 +1,59 @@
-import React from "react";
+// src/components/Navbar.jsx
+import React, { useContext } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import { auth, signOut, provider, signInWithPopup } from "../firebase";
-import axios from "axios";
-import { FcGoogle } from "react-icons/fc";
+import { ThemeContext } from "../context/ThemeContext";
+import { auth, signOut } from "../firebase";
+import { Moon, Sun } from "lucide-react";
 
 export default function Navbar() {
+  const { theme, toggleTheme } = useContext(ThemeContext);
   const navigate = useNavigate();
-  const location = useLocation(); // ✅ to highlight active page
+  const location = useLocation();
   const user = JSON.parse(localStorage.getItem("user"));
 
-  // Logout
   const handleLogout = async () => {
     try {
-      await signOut(auth); // if Google user
-    } catch (err) {
+      await signOut(auth);
+    } catch {
       console.log("Not a Firebase user, ignoring...");
     }
     localStorage.removeItem("user");
     navigate("/");
   };
 
-  // Google login
-  const handleGoogleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const token = await result.user.getIdToken();
-
-      const { data } = await axios.post("http://localhost:5000/api/auth/google", { token });
-
-      localStorage.setItem("user", JSON.stringify(data));
-      navigate("/goals");
-    } catch (err) {
-      console.error("Google login failed:", err);
-    }
-  };
-
-  // Helper to highlight active link
   const linkClasses = (path) =>
-    `hover:text-blue-600 ${
-      location.pathname === path ? "text-blue-600 font-semibold" : "text-gray-700"
+    `hover:text-blue-600 dark:hover:text-blue-400 ${
+      location.pathname === path
+        ? "text-blue-600 font-semibold dark:text-blue-400"
+        : "text-gray-700 dark:text-gray-300"
     }`;
 
   return (
-    <header className="bg-white shadow-md sticky top-0 z-50">
+    <header className="bg-white dark:bg-gray-900 shadow-md sticky top-0 z-50 transition-colors">
       <div className="max-w-7xl mx-auto flex justify-between items-center py-4 px-6">
-        {/* Logo */}
-        <Link to="/" className="text-2xl font-bold text-blue-600">
+        <Link to="/" className="text-2xl font-bold text-blue-600 dark:text-blue-400">
           LifeMap
         </Link>
 
-        {/* Nav Links */}
-        <nav className="space-x-6 font-medium">
+        <nav className="space-x-6 font-medium flex items-center">
           <Link to="/" className={linkClasses("/")}>Home</Link>
           <Link to="/goals" className={linkClasses("/goals")}>Goals</Link>
           <Link to="/roadmap" className={linkClasses("/roadmap")}>Roadmap</Link>
           <Link to="/dashboard" className={linkClasses("/dashboard")}>Dashboard</Link>
+          <Link to="/community" className={linkClasses("/community")}>Community</Link>
         </nav>
 
-        {/* Auth Buttons */}
         <div className="space-x-4 flex items-center">
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+          >
+            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+
           {user ? (
             <>
-              <span className="text-gray-600">Hi, {user.name}</span>
+              <span className="text-gray-600 dark:text-gray-300">Hi, {user.name}</span>
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
@@ -73,23 +65,16 @@ export default function Navbar() {
             <>
               <Link
                 to="/login"
-                className="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 hover:bg-blue-50 transition"
+                className="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 transition"
               >
                 Login
               </Link>
               <Link
                 to="/register"
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition"
               >
                 Sign Up
               </Link>
-              <button
-                onClick={handleGoogleLogin}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-100 transition"
-              >
-                <FcGoogle size={22} />
-                <span className="font-medium">Sign in</span>
-              </button>
             </>
           )}
         </div>

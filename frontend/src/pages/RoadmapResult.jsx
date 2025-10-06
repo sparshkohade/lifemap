@@ -1,86 +1,73 @@
 // frontend/src/pages/RoadmapResult.jsx
-import React from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import React, { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 export default function RoadmapResult() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const roadmap = location.state?.roadmap;
+  const { goal } = location.state || {}; // goal passed from previous page
+  const [roadmap, setRoadmap] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  console.log("Roadmap data:", roadmap);
+  useEffect(() => {
+    async function fetchRoadmap() {
+      try {
+        const res = await fetch("http://localhost:5000/api/roadmap", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ goal }),
+        });
 
-  if (!roadmap || !roadmap.steps || roadmap.steps.length === 0) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center p-6">
-        <h2 className="text-2xl font-bold text-gray-800">No roadmap data found ❌</h2>
-        <button
-          onClick={() => navigate("/roadmap")}
-          className="mt-4 px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition"
-        >
-          Generate Roadmap
-        </button>
-      </div>
-    );
-  }
+        const data = await res.json();
+
+        // AI might return JSON as string → parse it
+        let parsed;
+        if (typeof data.roadmap === "string") {
+          try {
+            parsed = JSON.parse(data.roadmap);
+          } catch (err) {
+            console.error("Invalid JSON from AI:", err);
+            parsed = null;
+          }
+        } else {
+          parsed = data.roadmap;
+        }
+
+        setRoadmap(parsed);
+      } catch (err) {
+        console.error("Error fetching roadmap:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (goal) fetchRoadmap();
+  }, [goal]);
+
+  if (loading) return <p className="p-6">Loading roadmap...</p>;
+  if (!roadmap) return <p className="p-6 text-red-500">Failed to load roadmap.</p>;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-8 lg:px-16">
-      <h1 className="text-3xl font-bold text-center text-blue-700 mb-10">
-        {roadmap.domain} Roadmap ({roadmap.level})
-      </h1>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6">Roadmap for {goal}</h1>
 
-      <div className="relative border-l-4 border-blue-500 ml-6">
-        {roadmap.steps.map((step, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.2 }}
-            className="mb-10 ml-6 relative"
-          >
-            {/* Milestone dot */}
-            <span className="absolute -left-3 flex items-center justify-center w-6 h-6 bg-blue-500 rounded-full text-white text-sm">
-              {index + 1}
-            </span>
-
-            {/* Step card */}
-            <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition">
-              <h3 className="text-xl font-semibold text-blue-600">{step.title}</h3>
-              <p className="text-gray-700 mt-2">{step.description}</p>
-              {step.duration && (
-                <p className="text-gray-500 mt-1 font-medium">Duration: {step.duration}</p>
-              )}
-              {step.resources && step.resources.length > 0 && (
-                <ul className="list-disc pl-5 mt-2 text-gray-700 space-y-1">
-                  {step.resources.map((res, i) => (
-                    <li key={i}>
-                      <a
-                        href={res.link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        {res.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="text-center mt-12">
-        <button
-          onClick={() => navigate("/roadmap")}
-          className="px-6 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition"
-        >
-          Generate Another Roadmap
-        </button>
-      </div>
+      {Object.keys(roadmap).map((category) => (
+        <div key={category} className="mb-6">
+          <h2 className="text-xl font-semibold mb-2">{category}</h2>
+          <ul className="list-disc ml-6 space-y-2">
+            {roadmap[category].map((task, idx) => (
+              <li key={idx}>
+                <strong>{task.title}</strong>{" "}
+                {task.description && <>– {task.description}</>}{" "}
+                {task.estimated_time && (
+                  <span className="text-sm text-gray-500">
+                    ({task.estimated_time})
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
-import React from "react";
