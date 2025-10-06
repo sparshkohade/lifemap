@@ -31,10 +31,15 @@ export default function Navbar() {
   return (
     <header className="bg-white dark:bg-gray-900 shadow-md sticky top-0 z-50 transition-colors">
       <div className="max-w-7xl mx-auto flex justify-between items-center py-4 px-6">
-        <Link to="/" className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+        {/* Logo */}
+        <Link
+          to="/"
+          className="text-2xl font-bold text-blue-600 dark:text-blue-400"
+        >
           LifeMap
         </Link>
 
+        {/* Navigation Links */}
         <nav className="space-x-6 font-medium flex items-center">
           <Link to="/" className={linkClasses("/")}>Home</Link>
           <Link to="/goals" className={linkClasses("/goals")}>Goals</Link>
@@ -43,26 +48,35 @@ export default function Navbar() {
           <Link to="/community" className={linkClasses("/community")}>Community</Link>
         </nav>
 
+        {/* Right Controls */}
         <div className="space-x-4 flex items-center">
+          {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition"
+            className="p-2 rounded bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
           >
-            {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === "dark" ? (
+              <Sun className="text-yellow-400" />
+            ) : (
+              <Moon className="text-gray-800 dark:text-gray-200" />
+            )}
           </button>
 
+          {/* User / Auth Buttons */}
           {user ? (
-            <>
-              <span className="text-gray-600 dark:text-gray-300">Hi, {user.name}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-600 dark:text-gray-300">
+                Hi, {user?.name || "User"}
+              </span>
               <button
                 onClick={handleLogout}
                 className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
               >
                 Logout
               </button>
-            </>
+            </div>
           ) : (
-            <>
+            <div className="flex items-center gap-2">
               <Link
                 to="/login"
                 className="px-4 py-2 rounded-lg border border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-gray-800 transition"
@@ -75,7 +89,7 @@ export default function Navbar() {
               >
                 Sign Up
               </Link>
-            </>
+            </div>
           )}
         </div>
       </div>

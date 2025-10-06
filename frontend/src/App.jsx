@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Community from "./pages/Community";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Roadmap from "./pages/Roadmap";
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
             <Route path="/community" element={<Community />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/roadmap" element={<Roadmap />} />
           </Routes>
         </div>
       </Router>
