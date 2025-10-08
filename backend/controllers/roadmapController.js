@@ -1,51 +1,95 @@
-// backend/controllers/roadmapController.js
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import OpenAI from "openai";
+import dotenv from "dotenv";
+import Roadmap from "../models/roadmapModel.js";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+dotenv.config();
 
+const client = new OpenAI({
+  apiKey: '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',
+});
+
+// 🧭 Generate AI Roadmap
 export const generateRoadmap = async (req, res) => {
-  const { goal } = req.body;
-
-  const prompt = `
-You are an expert roadmap generator.
-Given a career goal, create a hierarchical roadmap like roadmap.sh.
-
-⚠️ VERY IMPORTANT:
-- Respond with **ONLY valid JSON**.
-- Do not add explanations, text, or markdown fences.
-- The JSON must follow this schema:
-{
-  "Foundations": [
-    { "title": "string", "description": "string", "estimated_time": "string", "prerequisite": "string or null" }
-  ],
-  "Intermediate": [ ... ],
-  "Advanced": [ ... ]
-}
-
-Now generate the roadmap for this goal: ${goal}
-`;
-
+  const { goal, level } = req.body;
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const prompt = `
+    Generate a personalized career roadmap for someone who wants to "${goal}".
+    Their skill level is "${level}".
+    Include title, description, and estimated time for each step.
+    Output JSON array format:
+    [
+      {"title": "...", "description": "...", "estimatedTime": "..."},
+      ...
+    ]
+    `;
+    const completion = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: prompt,
+      response_format: { type: "json" },
+    });
 
-    const result = await model.generateContent(prompt);
-    let text = result.response.text();
-
-    // 🔹 Clean up: remove accidental code fences / extra formatting
-    text = text.replace(/```json|```/g, "").trim();
-
-    let roadmap;
-    try {
-      roadmap = JSON.parse(text);
-    } catch (err) {
-      console.error("❌ JSON parsing failed. Raw Gemini output:\n", text);
-      return res.status(500).json({ error: "AI response was not valid JSON" });
-    }
-
-    // ✅ Success: return roadmap JSON
-    res.json({ roadmap });
-  } catch (error) {
-    console.error("❌ Error generating roadmap:", error);
+    const steps = JSON.parse(completion.output[0].content[0].text);
+    res.json({ steps });
+  } catch (err) {
+    console.error(err);
     res.status(500).json({ error: "Failed to generate roadmap" });
+  }
+};
+
+// 🧩 Generate Quiz
+export const generateQuiz = async (req, res) => {
+  const { goal } = req.body;
+  try {
+    const prompt = `
+    Create 3 multiple-choice questions to test someone's knowledge of "${goal}".
+    Return JSON format:
+    [
+      {"question": "...", "options": ["A", "B", "C", "D"], "answer": "A"},
+      ...
+    ]
+    `;
+    const completion = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: prompt,
+      response_format: { type: "json" },
+    });
+    const questions = JSON.parse(completion.output[0].content[0].text);
+    res.json({ questions });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Quiz generation failed" });
+  }
+};
+
+// 🧠 Evaluate Quiz Answers
+export const evaluateQuiz = async (req, res) => {
+  const { goal, answers } = req.body;
+  try {
+    const prompt = `
+    Based on these answers ${JSON.stringify(answers)} to a ${goal} quiz,
+    decide whether the user is a "beginner", "intermediate", or "expert".
+    Respond only with one word.
+    `;
+    const completion = await client.responses.create({
+      model: "gpt-4.1-mini",
+      input: prompt,
+    });
+
+    const level = completion.output[0].content[0].text.trim().toLowerCase();
+    res.json({ level });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Evaluation failed" });
+  }
+};
+
+export const getUserRoadmaps = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const roadmaps = await Roadmap.find({ userId }).sort({ createdAt: -1 });
+    res.status(200).json(roadmaps);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to fetch user roadmaps" });
   }
 };

@@ -1,217 +1,180 @@
-// src/pages/Roadmap.jsx
+// frontend/src/pages/Roadmap.jsx
 import React, { useState } from "react";
-import jsPDF from "jspdf";
+import axios from "axios";
+import { Loader2 } from "lucide-react";
+import Navbar from "../components/Navbar";
 
 export default function Roadmap() {
-  const [domain, setDomain] = useState("");
-  const [level, setLevel] = useState("Beginner");
-  const [roadmap, setRoadmap] = useState(null);
+  const [goal, setGoal] = useState("");
+  const [step, setStep] = useState(1); // 1 = Quiz, 2 = Roadmap
+  const [questions, setQuestions] = useState([]);
+  const [answers, setAnswers] = useState({});
+  const [level, setLevel] = useState("");
+  const [roadmap, setRoadmap] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Demo roadmap to show initially
-  const demoRoadmap = {
-    roadmap: [
-      {
-        step: 1,
-        title: "Learn HTML & CSS",
-        description: "Understand the basics of web development including HTML structure and CSS styling.",
-        duration: "1-2 weeks",
-        resources: ["MDN Web Docs", "freeCodeCamp"]
-      },
-      {
-        step: 2,
-        title: "JavaScript Fundamentals",
-        description: "Learn JS basics, DOM manipulation, and events.",
-        duration: "2-3 weeks",
-        resources: ["Eloquent JavaScript", "JavaScript.info"]
-      },
-      {
-        step: 3,
-        title: "React.js",
-        description: "Learn React components, hooks, state management, and building SPAs.",
-        duration: "3-4 weeks",
-        resources: ["React Docs", "Scrimba React Course"]
-      }
-    ]
-  };
-
-  const handleGenerate = async (e) => {
-    e.preventDefault();
-    if (!domain) return alert("Please enter a domain");
-
+  // Fetch quiz questions from backend
+  const fetchQuiz = async () => {
+    if (!goal.trim()) {
+      setError("Please enter your career goal.");
+      return;
+    }
+    setError("");
     setLoading(true);
-    setRoadmap(null);
-
     try {
-      const res = await fetch("http://localhost:5000/api/roadmap/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ domain, level }),
-      });
-      const data = await res.json();
-      setRoadmap(data);
+      const res = await axios.post("http://localhost:5000/api/roadmap/quiz", { goal });
+      setQuestions(res.data.questions);
     } catch (err) {
       console.error(err);
-      alert("Failed to generate roadmap");
+      setError("Failed to fetch quiz. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCopy = () => {
-    if (!roadmap && !demoRoadmap) return;
-    const dataToCopy = (roadmap || demoRoadmap).roadmap
-      .map(step => `Step ${step.step}: ${step.title}\n${step.description}\n${step.duration ? "Duration: " + step.duration : ""}\n`)
-      .join("\n");
-    navigator.clipboard.writeText(dataToCopy);
-    alert("Roadmap copied to clipboard!");
+  // Submit quiz answers and get skill level
+  const submitQuiz = async () => {
+    if (Object.keys(answers).length !== questions.length) {
+      setError("Please answer all questions.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const res = await axios.post("http://localhost:5000/api/roadmap/evaluate", {
+        goal,
+        answers,
+      });
+      setLevel(res.data.level);
+      setStep(2); // move to roadmap generation
+      generateRoadmap(res.data.level); // auto-generate roadmap after evaluation
+    } catch (err) {
+      console.error(err);
+      setError("Failed to evaluate quiz. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDownloadPDF = () => {
-    if (!roadmap && !demoRoadmap) return;
-    const doc = new jsPDF();
-    const steps = (roadmap || demoRoadmap).roadmap;
-
-    doc.setFontSize(16);
-    doc.text("Career Roadmap", 105, 20, { align: "center" });
-
-    let y = 30;
-    steps.forEach(step => {
-      doc.setFontSize(14);
-      doc.text(`Step ${step.step}: ${step.title}`, 10, y);
-      y += 8;
-      doc.setFontSize(12);
-      doc.text(step.description, 10, y);
-      y += 6;
-      if (step.duration) {
-        doc.text(`Duration: ${step.duration}`, 10, y);
-        y += 6;
-      }
-      if (step.resources) {
-        doc.text("Resources:", 10, y);
-        y += 6;
-        step.resources.forEach(r => {
-          doc.text(`- ${r}`, 12, y);
-          y += 6;
-        });
-      }
-      y += 8;
-    });
-
-    doc.save("roadmap.pdf");
+  // Generate AI roadmap
+  const generateRoadmap = async (userLevel) => {
+    setLoading(true);
+    setRoadmap([]);
+    try {
+      const res = await axios.post("http://localhost:5000/api/roadmap/generate", {
+        goal,
+        level: userLevel,
+      });
+      setRoadmap(res.data.steps);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to generate roadmap. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6 transition-colors duration-300">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-8 text-center">
-        Career Roadmap Generator
-      </h1>
+    <>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col items-center px-4 py-10">
+        <div className="max-w-3xl w-full space-y-8">
+          <h1 className="text-3xl font-bold text-center">🎯 AI Career Roadmap Generator</h1>
+          <p className="text-center text-gray-600 dark:text-gray-400">
+            {step === 1
+              ? "Answer a few quick questions so we can personalize your roadmap."
+              : `Here’s your personalized career roadmap! (Skill level: ${level})`}
+          </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Input Section */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-md">
-          <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4">
-            Select Options
-          </h2>
+          {/* Step 1: Quiz */}
+          {step === 1 && (
+            <div className="space-y-6">
+              <input
+                type="text"
+                placeholder="Enter your career goal (e.g., Data Scientist)"
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
 
-          <form onSubmit={handleGenerate} className="space-y-4">
-            <div>
-              <label className="block text-gray-700 dark:text-gray-200 font-medium mb-1">
-                Domain
-              </label>
-              <select
-                value={domain}
-                onChange={(e) => setDomain(e.target.value)}
-                className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
-                required
-              >
-                <option value="">-- Select Domain --</option>
-                <option>Web Development</option>
-                <option>Data Science</option>
-                <option>AI / ML</option>
-                <option>UI / UX Design</option>
-                <option>Cybersecurity</option>
-                <option>Cloud Computing</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-gray-700 dark:text-gray-200 font-medium mb-1">
-                Career Level
-              </label>
-              <select
-                value={level}
-                onChange={(e) => setLevel(e.target.value)}
-                className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-gray-100"
-              >
-                <option>Beginner</option>
-                <option>Intermediate</option>
-                <option>Advanced</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full px-4 py-2 rounded-lg font-semibold text-white transition ${
-                loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-              }`}
-            >
-              {loading ? "Generating..." : "Generate Roadmap"}
-            </button>
-          </form>
-
-          <div className="mt-4 flex gap-4">
-            <button
-              onClick={handleCopy}
-              className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition"
-            >
-              Copy Roadmap
-            </button>
-            <button
-              onClick={handleDownloadPDF}
-              className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition"
-            >
-              Download PDF
-            </button>
-          </div>
-        </div>
-
-        {/* Roadmap Display Section */}
-        <div className="space-y-4">
-          {(roadmap || demoRoadmap) && (
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100 mb-4">
-                {roadmap ? "Your Roadmap" : "Demo Roadmap"}
-              </h2>
-
-              {(roadmap || demoRoadmap).roadmap.map((step, index) => (
-                <div
-                  key={index}
-                  className="p-4 border rounded-lg shadow-sm bg-gray-50 dark:bg-gray-700"
+              {questions.length === 0 ? (
+                <button
+                  onClick={fetchQuiz}
+                  disabled={loading || !goal.trim()}
+                  className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition mt-4"
                 >
-                  <h3 className="font-bold text-blue-600 dark:text-blue-400 mb-1">
-                    Step {step.step}: {step.title}
-                  </h3>
-                  <p className="text-gray-700 dark:text-gray-200">{step.description}</p>
-                  {step.duration && (
-                    <p className="text-sm text-gray-500 dark:text-gray-300">
-                      Duration: {step.duration}
-                    </p>
+                  {loading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <Loader2 className="animate-spin w-5 h-5" /> Loading Quiz...
+                    </div>
+                  ) : (
+                    "Start Quiz"
                   )}
-                  {step.resources && (
-                    <ul className="list-disc ml-6 text-sm text-gray-600 dark:text-gray-300">
-                      {step.resources.map((r, i) => (
-                        <li key={i}>{r}</li>
-                      ))}
-                    </ul>
-                  )}
+                </button>
+              ) : (
+                <>
+                  {questions.map((q, idx) => (
+                    <div key={idx} className="space-y-2">
+                      <p className="font-medium">{q.question}</p>
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        {q.options.map((opt, i) => (
+                          <button
+                            key={i}
+                            onClick={() =>
+                              setAnswers({ ...answers, [q.id]: i + 1 })
+                            }
+                            className={`px-4 py-2 rounded-lg border ${
+                              answers[q.id] === i + 1
+                                ? "bg-blue-600 text-white"
+                                : "bg-gray-100 dark:bg-gray-800 hover:bg-blue-100 dark:hover:bg-gray-700"
+                            } transition`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  <button
+                    onClick={submitQuiz}
+                    disabled={loading}
+                    className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition mt-4"
+                  >
+                    {loading ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <Loader2 className="animate-spin w-5 h-5" /> Evaluating...
+                      </div>
+                    ) : (
+                      "Submit Quiz & Generate Roadmap"
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Step 2: Roadmap Display */}
+          {step === 2 && roadmap.length > 0 && (
+            <div className="mt-8 space-y-6">
+              {roadmap.map((s, i) => (
+                <div
+                  key={i}
+                  className="border-l-4 border-blue-600 pl-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm"
+                >
+                  <h3 className="font-semibold text-lg">{s.title}</h3>
+                  <p className="text-gray-700 dark:text-gray-300">{s.description}</p>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Estimated Time: {s.estimatedTime}
+                  </span>
                 </div>
               ))}
             </div>
           )}
+
+          {error && <p className="text-red-500 text-center">{error}</p>}
         </div>
       </div>
-    </div>
+    </>
   );
 }

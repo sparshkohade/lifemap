@@ -7,7 +7,11 @@ import Dashboard from "./pages/Dashboard";
 import Community from "./pages/Community";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Roadmap from "./pages/Roadmap";
+import Roadmap from "./pages/Roadmap.jsx";
+import Goals from "./pages/Goals";
+import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile.jsx";
+
 
 export default function App() {
   return (
@@ -22,6 +26,9 @@ export default function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/roadmap" element={<Roadmap />} />
+            <Route path="/goals" element={<Goals />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/profile" element={<UserProfile />} />
           </Routes>
         </div>
       </Router>

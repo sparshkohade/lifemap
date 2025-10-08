@@ -6,6 +6,7 @@ import authRoutes from "./routes/authRoutes.js";
 import goalRoutes from "./routes/goalRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
 import roadmapRoutes from "./routes/roadmapRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
 
 
 dotenv.config();
@@ -19,6 +20,8 @@ app.use("/api/goals", goalRoutes);
 app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use("/api/quiz", quizRoutes);
 app.use("/api/roadmap", roadmapRoutes);
+app.use("/api/user", userRoutes);
+
 
 
 
@@ -34,3 +37,4 @@ mongoose.connect(process.env.MONGO_URI)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+ 

@@ -1,102 +1,123 @@
-// frontend/src/pages/Roadmap.jsx
 import React, { useState } from "react";
-import { Plus, CheckCircle } from "lucide-react";
-import { motion } from "framer-motion";
 
-const initialSteps = [
-  { id: 1, title: "Learn HTML & CSS", status: "completed" },
-  { id: 2, title: "Learn JavaScript", status: "in-progress" },
-  { id: 3, title: "Learn React", status: "not-started" },
-];
+export default function RoadmapForm() {
+  const [domain, setDomain] = useState("");
+  const [level, setLevel] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [roadmap, setRoadmap] = useState(null);
 
-const Roadmap = () => {
-  const [steps, setSteps] = useState(initialSteps);
-  const [newStepTitle, setNewStepTitle] = useState("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setRoadmap(null);
 
-  const addStep = () => {
-    if (newStepTitle.trim() === "") return;
-    setSteps([...steps, { id: steps.length + 1, title: newStepTitle, status: "not-started" }]);
-    setNewStepTitle("");
+    try {
+      const res = await fetch("http://localhost:5000/api/roadmap/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ domain, level }),
+      });
+
+      const data = await res.json();
+      setRoadmap(data);
+    } catch (error) {
+      console.error("Error generating roadmap:", error);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const toggleStepStatus = (id) => {
-    setSteps(
-      steps.map((step) =>
-        step.id === id
-          ? {
-              ...step,
-              status:
-                step.status === "not-started"
-                  ? "in-progress"
-                  : step.status === "in-progress"
-                  ? "completed"
-                  : "not-started",
-            }
-          : step
-      )
-    );
-  };
-
-  const completedCount = steps.filter((s) => s.status === "completed").length;
-  const progress = Math.round((completedCount / steps.length) * 100);
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6 transition-colors duration-300">
-      <h1 className="text-3xl font-bold mb-4 text-gray-900 dark:text-gray-100">Roadmap: Become a Web Developer</h1>
-      
-      {/* Progress Bar */}
-      <div className="w-full bg-gray-200 dark:bg-gray-700 h-4 rounded-full mb-6">
-        <div
-          className="bg-blue-500 h-4 rounded-full transition-all"
-          style={{ width: `${progress}%` }}
-        ></div>
-      </div>
+    <div className="min-h-screen bg-gray-50 px-6 py-12">
+      <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8">
+        <h1 className="text-3xl font-bold text-center text-gray-800 mb-6">
+          Create Your Career Roadmap
+        </h1>
 
-      {/* Steps Timeline */}
-      <div className="flex flex-col gap-4">
-        {steps.map((step, index) => (
-          <motion.div
-            key={step.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className={`p-4 rounded-lg shadow flex justify-between items-center transition-colors ${
-              step.status === "completed"
-                ? "bg-green-100 dark:bg-green-800"
-                : step.status === "in-progress"
-                ? "bg-yellow-100 dark:bg-yellow-800"
-                : "bg-white dark:bg-gray-800"
-            }`}
+        {/* Input Form */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Domain */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">
+              Choose your Domain
+            </label>
+            <select
+              value={domain}
+              onChange={(e) => setDomain(e.target.value)}
+              className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">-- Select Domain --</option>
+              <option value="Web Development">Web Development</option>
+              <option value="Data Science">Data Science</option>
+              <option value="AI/ML">AI / Machine Learning</option>
+              <option value="UI/UX Design">UI / UX Design</option>
+              <option value="Cybersecurity">Cybersecurity</option>
+              <option value="Cloud Computing">Cloud Computing</option>
+            </select>
+          </div>
+
+          {/* Career Level */}
+          <div>
+            <label className="block text-gray-700 font-medium mb-2">
+              Choose your Career Level
+            </label>
+            <select
+              value={level}
+              onChange={(e) => setLevel(e.target.value)}
+              className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500"
+              required
+            >
+              <option value="">-- Select Level --</option>
+              <option value="Beginner">Beginner</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Advanced">Advanced</option>
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="px-6 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-50"
           >
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{step.title}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Status: {step.status}</p>
-            </div>
-            <button onClick={() => toggleStepStatus(step.id)} className="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-              <CheckCircle className={`text-green-500 ${step.status === "completed" ? "animate-bounce" : ""}`} />
-            </button>
-          </motion.div>
-        ))}
-      </div>
+            {loading ? "Generating..." : "Generate Roadmap"}
+          </button>
+        </form>
 
-      {/* Add New Step */}
-      <div className="flex gap-2 mt-6">
-        <input
-          type="text"
-          placeholder="Add new step..."
-          value={newStepTitle}
-          onChange={(e) => setNewStepTitle(e.target.value)}
-          className="p-2 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 flex-1 focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
-        <button
-          onClick={addStep}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition flex items-center gap-1"
-        >
-          <Plus size={16} /> Add Step
-        </button>
+        {/* Display Roadmap */}
+        {roadmap && (
+          <div className="mt-8">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">
+              Your Roadmap
+            </h2>
+            <div className="space-y-4">
+              {roadmap.roadmap.map((step, index) => (
+                <div
+                  key={index}
+                  className="p-4 border rounded-lg bg-gray-50 shadow-sm"
+                >
+                  <h3 className="font-bold text-blue-600">
+                    Step {step.step}: {step.title}
+                  </h3>
+                  <p className="text-gray-700">{step.description}</p>
+                  {step.duration && (
+                    <p className="text-sm text-gray-500">
+                      Duration: {step.duration}
+                    </p>
+                  )}
+                  {step.resources && (
+                    <ul className="list-disc ml-6 text-sm text-gray-600">
+                      {step.resources.map((r, i) => (
+                        <li key={i}>{r}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
-};
-
-export default Roadmap;
+}

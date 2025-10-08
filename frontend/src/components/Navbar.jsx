@@ -1,15 +1,41 @@
 // src/components/Navbar.jsx
-import React, { useContext } from "react";
+import React, { useContext, useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { ThemeContext } from "../context/ThemeContext";
 import { auth, signOut } from "../firebase";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, User, Settings, LogOut } from "lucide-react";
 
 export default function Navbar() {
   const { theme, toggleTheme } = useContext(ThemeContext);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const user = JSON.parse(localStorage.getItem("user"));
+  const [user, setUser] = useState(null);
+
+  // Listen to Firebase Auth changes
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
+      if (firebaseUser) {
+        const formattedUser = {
+          name:
+            firebaseUser.displayName ||
+            firebaseUser.name ||
+            firebaseUser.email?.split("@")[0] ||
+            "User",
+          email: firebaseUser.email || "",
+          photoURL: firebaseUser.photoURL || null,
+        };
+        localStorage.setItem("user", JSON.stringify(formattedUser));
+        setUser(formattedUser);
+      } else {
+        localStorage.removeItem("user");
+        setUser(null);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -18,8 +44,21 @@ export default function Navbar() {
       console.log("Not a Firebase user, ignoring...");
     }
     localStorage.removeItem("user");
+    setUser(null);
     navigate("/");
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () =>
+      document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const linkClasses = (path) =>
     `hover:text-blue-600 dark:hover:text-blue-400 ${
@@ -27,6 +66,29 @@ export default function Navbar() {
         ? "text-blue-600 font-semibold dark:text-blue-400"
         : "text-gray-700 dark:text-gray-300"
     }`;
+
+  // Avatar component (photo or default profile icon)
+  const Avatar = ({ photoURL, size = 36 }) => {
+    if (photoURL) {
+      return (
+        <img
+          src={photoURL}
+          alt="User Avatar"
+          style={{ width: size, height: size }}
+          className="rounded-full border border-gray-300 dark:border-gray-600 object-cover"
+        />
+      );
+    }
+
+    return (
+      <div
+        style={{ width: size, height: size }}
+        className="rounded-full bg-gray-600 flex items-center justify-center"
+      >
+        <User className="w-5 h-5 text-white" />
+      </div>
+    );
+  };
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-md sticky top-0 z-50 transition-colors">
@@ -41,19 +103,29 @@ export default function Navbar() {
 
         {/* Navigation Links */}
         <nav className="space-x-6 font-medium flex items-center">
-          <Link to="/" className={linkClasses("/")}>Home</Link>
-          <Link to="/goals" className={linkClasses("/goals")}>Goals</Link>
-          <Link to="/roadmap" className={linkClasses("/roadmap")}>Roadmap</Link>
-          <Link to="/dashboard" className={linkClasses("/dashboard")}>Dashboard</Link>
-          <Link to="/community" className={linkClasses("/community")}>Community</Link>
+          <Link to="/" className={linkClasses("/")}>
+            Home
+          </Link>
+          <Link to="/goals" className={linkClasses("/goals")}>
+            Goals
+          </Link>
+          <Link to="/roadmap" className={linkClasses("/roadmap")}>
+            Roadmap
+          </Link>
+          <Link to="/dashboard" className={linkClasses("/dashboard")}>
+            Dashboard
+          </Link>
+          <Link to="/community" className={linkClasses("/community")}>
+            Community
+          </Link>
         </nav>
 
         {/* Right Controls */}
-        <div className="space-x-4 flex items-center">
+        <div className="space-x-4 flex items-center relative" ref={dropdownRef}>
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
-            className="p-2 rounded bg-white dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+            className="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800 transition"
           >
             {theme === "dark" ? (
               <Sun className="text-yellow-400" />
@@ -62,19 +134,74 @@ export default function Navbar() {
             )}
           </button>
 
-          {/* User / Auth Buttons */}
+          {/* User Auth Section */}
           {user ? (
-            <div className="flex items-center gap-2">
-              <span className="text-gray-600 dark:text-gray-300">
-                Hi, {user?.name || "User"}
-              </span>
+            <>
+              {/* Avatar Icon */}
               <button
-                onClick={handleLogout}
-                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+                className="focus:outline-none"
               >
-                Logout
+                <Avatar photoURL={user.photoURL} />
               </button>
-            </div>
+
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {dropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                  >
+                    <div className="px-4 py-3 border-b dark:border-gray-700 flex items-center gap-3">
+                      <Avatar photoURL={user.photoURL} size={40} />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+                          {user.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {user.email}
+                        </p>
+                      </div>
+                    </div>
+                    <ul className="py-2 text-sm text-gray-700 dark:text-gray-300">
+                      <li>
+                        <button
+                          onClick={() => {
+                            navigate("/profile");
+                            setDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <User className="w-4 h-4" /> Profile
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          onClick={() => {
+                            toggleTheme();
+                            setDropdownOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2 px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <Settings className="w-4 h-4" /> Theme
+                        </button>
+                      </li>
+                      <li>
+                        <button
+                          onClick={handleLogout}
+                          className="w-full flex items-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          <LogOut className="w-4 h-4" /> Logout
+                        </button>
+                      </li>
+                    </ul>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </>
           ) : (
             <div className="flex items-center gap-2">
               <Link
