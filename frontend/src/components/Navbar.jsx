@@ -1,4 +1,3 @@
-// src/components/Navbar.jsx
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -56,8 +55,7 @@ export default function Navbar() {
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   const linkClasses = (path) =>
@@ -67,8 +65,8 @@ export default function Navbar() {
         : "text-gray-700 dark:text-gray-300"
     }`;
 
-  // Avatar component (photo or default profile icon)
-  const Avatar = ({ photoURL, size = 36 }) => {
+  /* ---------------- Avatar Component ---------------- */
+  const Avatar = ({ photoURL, name, email, size = 36 }) => {
     if (photoURL) {
       return (
         <img
@@ -80,12 +78,30 @@ export default function Navbar() {
       );
     }
 
+    // Fallback: Generate gradient background from name/email
+    const initial =
+      name?.charAt(0)?.toUpperCase() ||
+      email?.charAt(0)?.toUpperCase() ||
+      "?";
+
+    const gradients = [
+      "from-pink-500 to-rose-500",
+      "from-blue-500 to-indigo-500",
+      "from-green-500 to-emerald-500",
+      "from-orange-500 to-amber-500",
+      "from-purple-500 to-violet-500",
+    ];
+    const randomGradient =
+      gradients[
+        (name?.charCodeAt(0) || email?.charCodeAt(0) || 65) % gradients.length
+      ];
+
     return (
       <div
         style={{ width: size, height: size }}
-        className="rounded-full bg-gray-600 flex items-center justify-center"
+        className={`rounded-full flex items-center justify-center font-semibold text-white border border-gray-300 dark:border-gray-600 bg-gradient-to-br ${randomGradient}`}
       >
-        <User className="w-5 h-5 text-white" />
+        {initial}
       </div>
     );
   };
@@ -142,7 +158,11 @@ export default function Navbar() {
                 onClick={() => setDropdownOpen(!dropdownOpen)}
                 className="focus:outline-none"
               >
-                <Avatar photoURL={user.photoURL} />
+                <Avatar
+                  photoURL={user.photoURL}
+                  name={user.name}
+                  email={user.email}
+                />
               </button>
 
               {/* Dropdown Menu */}
@@ -156,7 +176,12 @@ export default function Navbar() {
                     className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
                   >
                     <div className="px-4 py-3 border-b dark:border-gray-700 flex items-center gap-3">
-                      <Avatar photoURL={user.photoURL} size={40} />
+                      <Avatar
+                        photoURL={user.photoURL}
+                        name={user.name}
+                        email={user.email}
+                        size={40}
+                      />
                       <div>
                         <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">
                           {user.name}

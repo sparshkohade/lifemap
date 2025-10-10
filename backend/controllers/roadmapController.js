@@ -5,7 +5,7 @@ import Roadmap from "../models/roadmapModel.js";
 dotenv.config();
 
 const client = new OpenAI({
-  apiKey: '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',
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 // 🧭 Generate AI Roadmap
@@ -13,22 +13,29 @@ export const generateRoadmap = async (req, res) => {
   const { goal, level } = req.body;
   try {
     const prompt = `
-    Generate a personalized career roadmap for someone who wants to "${goal}".
-    Their skill level is "${level}".
-    Include title, description, and estimated time for each step.
-    Output JSON array format:
-    [
-      {"title": "...", "description": "...", "estimatedTime": "..."},
-      ...
-    ]
+      Generate a personalized career roadmap for someone who wants to "${goal}".
+      Their skill level is "${level}".
+      Include title, description, and estimated time for each step.
+      Output as a JSON array:
+      [
+        {"title": "...", "description": "...", "estimatedTime": "..."},
+        ...
+      ]
     `;
+
     const completion = await client.responses.create({
       model: "gpt-4.1-mini",
       input: prompt,
-      response_format: { type: "json" },
+      text: { format: "text" }, // ✅ plain text output
     });
 
-    const steps = JSON.parse(completion.output[0].content[0].text);
+    let steps = [];
+    try {
+      steps = JSON.parse(completion.output[0].content[0].text);
+    } catch (err) {
+      console.error("Failed to parse JSON from model:", err);
+    }
+
     res.json({ steps });
   } catch (err) {
     console.error(err);
@@ -41,19 +48,27 @@ export const generateQuiz = async (req, res) => {
   const { goal } = req.body;
   try {
     const prompt = `
-    Create 3 multiple-choice questions to test someone's knowledge of "${goal}".
-    Return JSON format:
-    [
-      {"question": "...", "options": ["A", "B", "C", "D"], "answer": "A"},
-      ...
-    ]
+      Create 3 multiple-choice questions to test someone's knowledge of "${goal}".
+      Return JSON array format:
+      [
+        {"question": "...", "options": ["A", "B", "C", "D"], "answer": "A"},
+        ...
+      ]
     `;
+
     const completion = await client.responses.create({
       model: "gpt-4.1-mini",
       input: prompt,
-      response_format: { type: "json" },
+      text: { format: "text" }, // ✅ plain text output
     });
-    const questions = JSON.parse(completion.output[0].content[0].text);
+
+    let questions = [];
+    try {
+      questions = JSON.parse(completion.output[0].content[0].text);
+    } catch (err) {
+      console.error("Failed to parse quiz JSON:", err);
+    }
+
     res.json({ questions });
   } catch (err) {
     console.error(err);
@@ -66,10 +81,11 @@ export const evaluateQuiz = async (req, res) => {
   const { goal, answers } = req.body;
   try {
     const prompt = `
-    Based on these answers ${JSON.stringify(answers)} to a ${goal} quiz,
-    decide whether the user is a "beginner", "intermediate", or "expert".
-    Respond only with one word.
+      Based on these answers ${JSON.stringify(answers)} to a ${goal} quiz,
+      decide whether the user is a "beginner", "intermediate", or "expert".
+      Respond only with one word.
     `;
+
     const completion = await client.responses.create({
       model: "gpt-4.1-mini",
       input: prompt,
@@ -83,6 +99,7 @@ export const evaluateQuiz = async (req, res) => {
   }
 };
 
+// Fetch user roadmaps
 export const getUserRoadmaps = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -91,5 +108,23 @@ export const getUserRoadmaps = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to fetch user roadmaps" });
+  }
+};
+
+// Save roadmap
+export const saveRoadmap = async (req, res) => {
+  const { userId, goal, steps } = req.body;
+
+  if (!userId || !goal || !steps || !steps.length) {
+    return res.status(400).json({ error: "Missing required fields" });
+  }
+
+  try {
+    const roadmap = new Roadmap({ userId, goal, steps });
+    await roadmap.save();
+    res.json({ message: "Roadmap saved successfully", roadmap });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to save roadmap" });
   }
 };
