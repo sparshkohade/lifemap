@@ -11,6 +11,7 @@ import Roadmap from "./pages/Roadmap.jsx";
 import Goals from "./pages/Goals";
 import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile.jsx";
+import CareerTest from "./pages/CareerTest.jsx";
 
 
 export default function App() {
@@ -29,6 +30,8 @@ export default function App() {
             <Route path="/goals" element={<Goals />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile" element={<UserProfile />} />
+            <Route path="/test/:field" element={<CareerTest />} />
+
           </Routes>
         </div>
       </Router>

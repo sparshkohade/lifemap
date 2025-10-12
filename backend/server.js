@@ -7,6 +7,7 @@ import goalRoutes from "./routes/goalRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
 import roadmapRoutes from "./routes/roadmapRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
+import connectDB from "./config/db.js";
 
 
 dotenv.config();

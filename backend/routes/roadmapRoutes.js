@@ -1,30 +1,18 @@
 import express from "express";
 import {
   generateRoadmap,
-  saveRoadmap,
   generateQuiz,
   evaluateQuiz,
   getUserRoadmaps,
+  saveRoadmap,
 } from "../controllers/roadmapController.js";
 
 const router = express.Router();
 
-/**
- * @route   POST /api/roadmap
- * @desc    Generate & save personalized roadmap
- * @body    { goal: string, level: string, userId: string }
- */
-router.post("/", generateRoadmap);
-
-/**
- * @route   GET /api/roadmap/:userId
- * @desc    Get all roadmaps for a specific user
- */
-router.get("/:userId", getUserRoadmaps);
-
-router.post("/generate", generateRoadmap);
-router.post("/save", saveRoadmap); // ✅ New route to save roadmap
-router.post("/quiz", generateQuiz);
-router.post("/evaluate", evaluateQuiz);
+router.post("/generateRoadmap", generateRoadmap);
+router.post("/generateQuiz", generateQuiz);
+router.post("/evaluateQuiz", evaluateQuiz);
+router.get("/user/:userId", getUserRoadmaps);
+router.post("/save", saveRoadmap);
 
 export default router;

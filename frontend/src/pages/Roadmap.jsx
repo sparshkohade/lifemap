@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { Loader2, ChevronDown, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 export default function Roadmap() {
   // main states
@@ -11,6 +12,7 @@ export default function Roadmap() {
   const [roadmap, setRoadmap] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   // test modal
   const [showTest, setShowTest] = useState(false);
@@ -296,10 +298,17 @@ export default function Roadmap() {
               </select>
 
               <button
-                onClick={startTest}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+                onClick={() => {
+                  if (!goal.trim()) {
+                    setError("Please enter a career goal first.");
+                    return;
+                  }
+                  setError(""); // clear any previous errors
+                  navigate(`/test/${encodeURIComponent(goal)}`);
+                }}
+                className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
               >
-                Take Test
+                Take AI Test
               </button>
             </div>
 
