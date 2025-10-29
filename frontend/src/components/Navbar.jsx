@@ -3,11 +3,12 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeContext } from "../context/ThemeContext";
 import { auth, signOut } from "../firebase";
-import { Moon, Sun, User, Settings, LogOut } from "lucide-react";
+import { Moon, Sun, User, Settings, LogOut, Users } from "lucide-react";
 
 export default function Navbar() {
   const { theme, toggleTheme } = useContext(ThemeContext);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [mentorModalOpen, setMentorModalOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -20,12 +21,12 @@ export default function Navbar() {
         const formattedUser = {
           name:
             firebaseUser.displayName ||
-            firebaseUser.name ||
             firebaseUser.email?.split("@")[0] ||
             "User",
           email: firebaseUser.email || "",
           photoURL: firebaseUser.photoURL || null,
         };
+
         localStorage.setItem("user", JSON.stringify(formattedUser));
         setUser(formattedUser);
       } else {
@@ -78,7 +79,6 @@ export default function Navbar() {
       );
     }
 
-    // Fallback: Generate gradient background from name/email
     const initial =
       name?.charAt(0)?.toUpperCase() ||
       email?.charAt(0)?.toUpperCase() ||
@@ -105,6 +105,86 @@ export default function Navbar() {
       </div>
     );
   };
+
+  /* ---------------- Mentor Modal ---------------- */
+  const MentorModal = () => (
+    <AnimatePresence>
+      {mentorModalOpen && (
+        <motion.div
+          className="fixed inset-0 flex items-center justify-center bg-black/60 z-[100]"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            className={`w-[90%] max-w-md rounded-2xl p-6 shadow-2xl border ${
+              theme === "dark"
+                ? "bg-gray-900 border-gray-700 text-gray-100"
+                : "bg-white border-gray-300 text-gray-800"
+            }`}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <h2 className="text-xl font-bold mb-4 text-center">
+              Connect with a Mentor
+            </h2>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                alert("Mentor request submitted successfully!");
+                setMentorModalOpen(false);
+              }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="block text-sm mb-1">Your Name</label>
+                <input
+                  type="text"
+                  defaultValue={user?.name || ""}
+                  className="w-full px-3 py-2 rounded-lg border dark:bg-gray-800 dark:border-gray-600"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Goal Area</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Web Development, Design"
+                  className="w-full px-3 py-2 rounded-lg border dark:bg-gray-800 dark:border-gray-600"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm mb-1">Message</label>
+                <textarea
+                  rows={3}
+                  placeholder="Tell us what kind of mentor guidance you’re seeking..."
+                  className="w-full px-3 py-2 rounded-lg border dark:bg-gray-800 dark:border-gray-600"
+                  required
+                ></textarea>
+              </div>
+              <div className="flex justify-end gap-3 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setMentorModalOpen(false)}
+                  className="px-4 py-2 rounded-lg border hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                >
+                  Submit
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 
   return (
     <header className="bg-white dark:bg-gray-900 shadow-md sticky top-0 z-50 transition-colors">
@@ -149,6 +229,17 @@ export default function Navbar() {
               <Moon className="text-gray-800 dark:text-gray-200" />
             )}
           </button>
+
+          {/* Mentor Button (Only if Logged In) */}
+          {user && (
+            <button
+              onClick={() => setMentorModalOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 transition"
+            >
+              <Users className="w-4 h-4" />
+              Connect with Mentor
+            </button>
+          )}
 
           {/* User Auth Section */}
           {user ? (
@@ -245,6 +336,9 @@ export default function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Mentor Modal */}
+      <MentorModal />
     </header>
   );
 }

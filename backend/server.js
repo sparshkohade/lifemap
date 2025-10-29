@@ -8,9 +8,10 @@ import quizRoutes from "./routes/quizRoutes.js";
 import roadmapRoutes from "./routes/roadmapRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import connectDB from "./config/db.js";
+import taskRoutes from "./routes/taskRoutes.js";
 
 
-dotenv.config();
+dotenv.config(); 
 const app = express();
 
 // Middleware
@@ -22,7 +23,7 @@ app.use(cors({ origin: "http://localhost:5173", credentials: true }));
 app.use("/api/quiz", quizRoutes);
 app.use("/api/roadmap", roadmapRoutes);
 app.use("/api/user", userRoutes);
-
+app.use("/api/tasks", taskRoutes);
 
 
 

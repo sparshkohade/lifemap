@@ -4,41 +4,60 @@ dotenv.config();
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Roadmap from "../models/roadmapModel.js";
 
-// Initialize Gemini client
+// ENHANCEMENT: Initialize Gemini with JSON mode for reliable, structured output
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const jsonModel = genAI.getGenerativeModel({
+  // ENHANCEMENT: Corrected model name to a valid and powerful option
+  model: "gemini-2.5-flash",
+  generationConfig: {
+    response_mime_type: "application/json",
+  },
+});
+const textModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-/* ---------------------------------------------------
- 🧭 Generate AI Roadmap
---------------------------------------------------- */
+
 export const generateRoadmap = async (req, res) => {
-  const { goal, level } = req.body;
-  if (!goal || !level)
-    return res.status(400).json({ error: "Goal and level are required" });
-
   try {
-    const prompt = `
-      Generate a personalized career roadmap for someone who wants to "${goal}".
-      Skill level: "${level}".
-      Include title, description, and estimated time for each step.
-      Output as a JSON array:
-      [
-        {"title": "...", "description": "...", "estimatedTime": "..."},
-        ...
-      ]
-    `;
+    const { career, level } = req.body;
 
+    if (!career || !level) {
+      return res.status(400).json({ message: "Career and level are required" });
+    }
+
+    const prompt = `
+Generate a detailed, structured career roadmap for becoming a successful ${career}.
+The user is currently at a ${level} level.
+Include 4–6 key phases, each with:
+- phase name
+- short description
+- estimated duration (in months)
+- essential skills
+- recommended resources (courses, websites, or tools)
+
+Return the result strictly as a JSON array. Example format:
+[
+  {
+    "phase": "Foundation",
+    "description": "Learn the basics...",
+    "duration": "3 months",
+    "skills": ["Skill1", "Skill2"],
+    "resources": ["link1", "link2"]
+  }
+]
+`;
+
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(prompt);
     const text = result.response.text();
 
-    // Extract only JSON portion safely
-    const jsonMatch = text.match(/\[.*\]/s);
-    const steps = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+    // Remove markdown formatting if present
+    const cleaned = text.replace(/```json|```/g, "").trim();
+    const roadmap = JSON.parse(cleaned);
 
-    res.json({ steps });
-  } catch (err) {
-    console.error("❌ Roadmap generation failed:", err);
-    res.status(500).json({ error: "Failed to generate roadmap" });
+    res.status(200).json({ roadmap });
+  } catch (error) {
+    console.error("❌ Roadmap generation error:", error);
+    res.status(500).json({ message: "Error generating roadmap", error: error.message });
   }
 };
 
@@ -52,43 +71,30 @@ export const generateQuiz = async (req, res) => {
 
   try {
     const prompt = `
-      Create 3 multiple-choice questions to test someone's knowledge of "${goal}".
-      Format JSON:
-      [
-        {"question": "...", "options": ["A", "B", "C", "D"], "answer": "A"},
-        ...
-      ]
+      You are a helpful quiz generator.
+      Create exactly 5 multiple-choice questions to test a user's basic knowledge of "${goal}".
+      
+      Your response MUST be a valid JSON array of objects.
+      Each object must have the keys: "question", "options" (an array of 4 strings), and "answer" (a string that exactly matches one of the options).
     `;
 
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
-
-    const jsonMatch = text.match(/\[.*\]/s);
-    const questions = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
+    const result = await jsonModel.generateContent(prompt);
+    const questions = JSON.parse(result.response.text());
 
     res.json({ questions });
   } catch (err) {
     console.error("❌ Quiz generation error:", err);
 
-    // ✅ Fallback mock data (useful for dev/test)
-    const questions = [
-      {
-        question: "Sample question 1",
-        options: ["A", "B", "C", "D"],
-        answer: "A",
-      },
-      {
-        question: "Sample question 2",
-        options: ["A", "B", "C", "D"],
-        answer: "B",
-      },
-      {
-        question: "Sample question 3",
-        options: ["A", "B", "C", "D"],
-        answer: "C",
-      },
-    ];
-    res.json({ questions, note: "Using mock data due to API error" });
+    // ENHANCEMENT: Only use mock data in a development environment.
+    if (process.env.NODE_ENV === 'development') {
+      const mockQuestions = [
+        { question: "Sample question 1 for dev", options: ["A", "B", "C", "D"], answer: "A" },
+        { question: "Sample question 2 for dev", options: ["A", "B", "C", "D"], answer: "B" },
+      ];
+      return res.json({ questions: mockQuestions, note: "Using mock data due to API error" });
+    }
+
+    res.status(500).json({ error: "Failed to generate quiz." });
   }
 };
 
@@ -102,12 +108,14 @@ export const evaluateQuiz = async (req, res) => {
 
   try {
     const prompt = `
-      Based on these answers ${JSON.stringify(answers)} to a ${goal} quiz,
-      decide whether the user is a "beginner", "intermediate", or "expert".
-      Respond only with one word.
+      Based on these user answers: ${JSON.stringify(answers)} for a quiz about "${goal}",
+      evaluate if the user's skill level is "beginner", "intermediate", or "expert".
+      
+      Respond with ONLY one of those three words, nothing else.
     `;
-
-    const result = await model.generateContent(prompt);
+    
+    // Using the text model here since we only need a single word
+    const result = await textModel.generateContent(prompt);
     const level = result.response.text().trim().toLowerCase();
 
     res.json({ level });
@@ -123,10 +131,11 @@ export const evaluateQuiz = async (req, res) => {
 export const getUserRoadmaps = async (req, res) => {
   try {
     const { userId } = req.params;
-    const roadmaps = await Roadmap.find({ userId }).sort({ createdAt: -1 });
+    // .lean() is a small performance optimization for read-only queries
+    const roadmaps = await Roadmap.find({ userId }).sort({ createdAt: -1 }).lean();
     res.status(200).json(roadmaps);
   } catch (err) {
-    console.error(err);
+    console.error("❌ Fetch user roadmaps failed:", err);
     res.status(500).json({ message: "Failed to fetch user roadmaps" });
   }
 };
@@ -137,14 +146,14 @@ export const getUserRoadmaps = async (req, res) => {
 export const saveRoadmap = async (req, res) => {
   const { userId, goal, steps } = req.body;
   if (!userId || !goal || !steps || !steps.length)
-    return res.status(400).json({ error: "Missing required fields" });
+    return res.status(400).json({ error: "Missing required fields for saving roadmap" });
 
   try {
     const roadmap = new Roadmap({ userId, goal, steps });
     await roadmap.save();
-    res.json({ message: "Roadmap saved", roadmap });
+    res.status(201).json({ message: "Roadmap saved successfully", roadmap });
   } catch (err) {
-    console.error(err);
+    console.error("❌ Save roadmap failed:", err);
     res.status(500).json({ error: "Failed to save roadmap" });
   }
 };

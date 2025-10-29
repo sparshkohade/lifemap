@@ -1,13 +1,15 @@
 // frontend/src/pages/CareerTest.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import axios from "axios";
-import { Loader2, CheckCircle, AlertTriangle } from "lucide-react";
+import { Loader2, CheckCircle, AlertTriangle, Sun, Moon } from "lucide-react";
+import { ThemeContext } from "../context/ThemeContext";
 
 const CareerTest = () => {
   const { field } = useParams();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useContext(ThemeContext); // ✅ get theme & toggle
   const [questions, setQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
@@ -19,8 +21,11 @@ const CareerTest = () => {
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const res = await axios.post("http://localhost:5000/api/roadmap/generateQuiz", { goal: field });
-        setQuestions(res.data.questions);
+        const res = await axios.post("http://localhost:5000/api/roadmap/generateQuiz", {
+          goal: field,
+          count: 5, // ✅ ensure 5 questions
+        });
+        setQuestions(res.data.questions.slice(0, 5)); // fallback to 5
       } catch (error) {
         console.error("Error fetching test:", error);
       } finally {
@@ -64,46 +69,53 @@ const CareerTest = () => {
     navigate(`/roadmap?goal=${encodeURIComponent(field)}&level=${aiLevel}`);
   };
 
-  // Loading screen
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-[#0a0a0a] text-gray-200">
-        <Loader2 className="animate-spin mr-2" /> Generating AI-powered test for {field}...
-      </div>
-    );
-  }
+  // 🌓 Theme background
+  const isDark = theme === "dark";
+  const bgClass = isDark ? "bg-[#0a0a0a] text-gray-200" : "bg-gray-50 text-gray-900";
+  const cardClass = isDark ? "bg-[#111]" : "bg-white";
+  const optionClass = (selected) =>
+    selected
+      ? "bg-blue-600 border-blue-500 text-white"
+      : isDark
+      ? "bg-[#121212] border-gray-700 hover:border-blue-500"
+      : "bg-gray-100 border-gray-300 hover:border-blue-500";
 
-  // Evaluation screen
-  if (evaluating) {
+  // 🌀 Loading states
+  if (loading || evaluating) {
+    const message = loading
+      ? `Generating AI-powered test for ${field}...`
+      : "Evaluating your answers with AI...";
     return (
-      <div className="flex items-center justify-center h-screen bg-[#0a0a0a] text-gray-200">
-        <Loader2 className="animate-spin mr-2" /> Evaluating your answers with AI...
+      <div className={`flex items-center justify-center h-screen ${bgClass}`}>
+        <Loader2 className="animate-spin mr-2" /> {message}
       </div>
     );
   }
 
   return (
-    <div className={`min-h-screen p-6 ${darkMode ? "bg-[#0a0a0a] text-gray-200" : "bg-gray-50 text-gray-900"}`}>
+    <div className={`min-h-screen p-6 transition-colors duration-500 ${bgClass}`}>
+      
+
       <motion.div
         initial={{ opacity: 0, y: 30 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-3xl mx-auto bg-[#111] p-8 rounded-2xl shadow-lg"
+        className={`max-w-3xl mx-auto ${cardClass} p-8 rounded-2xl shadow-lg transition-all duration-500`}
       >
-        <h1 className="text-3xl font-bold mb-4 text-blue-400 text-center">
+        <h1 className="text-3xl font-bold mb-4 text-blue-500 text-center">
           {field} Skill Assessment
         </h1>
 
         {!submitted ? (
           <>
             <p className="text-gray-400 mb-6 text-center">
-              Answer the following questions to determine your current skill level.
+              Answer the following 5 questions to determine your current skill level.
             </p>
 
             {questions.map((q, i) => (
               <motion.div
                 key={i}
                 whileHover={{ scale: 1.02 }}
-                className="mb-6 bg-[#1b1b1b] p-5 rounded-xl shadow-sm border border-gray-800"
+                className={`mb-6 p-5 rounded-xl shadow-sm border ${isDark ? "border-gray-800" : "border-gray-200"}`}
               >
                 <h3 className="font-semibold mb-3">
                   {i + 1}. {q.question}
@@ -112,11 +124,9 @@ const CareerTest = () => {
                   {q.options.map((opt, j) => (
                     <label
                       key={j}
-                      className={`flex items-center gap-2 p-2 rounded-md cursor-pointer border ${
+                      className={`flex items-center gap-2 p-2 rounded-md cursor-pointer border transition ${optionClass(
                         answers[i] === opt
-                          ? "bg-blue-600 border-blue-500"
-                          : "bg-[#121212] border-gray-700 hover:border-blue-500"
-                      }`}
+                      )}`}
                       onClick={() => handleSelect(i, opt)}
                     >
                       <input
