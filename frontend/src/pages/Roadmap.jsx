@@ -5,41 +5,26 @@ import { Loader2, ChevronDown, ArrowRight, Share2, Save } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ThemeContext } from "../context/ThemeContext";
-
-/**
- * Enhanced Roadmap page (full file)
- * - Includes resolveApiBase() helper to avoid "process is not defined"
- * - Debounced suggestions, keyboard UX, abortable requests
- * - Timeline UI with expand/collapse, share & save helpers
- */
+import RoadmapChart from "../components/RoadmapChart";
 
 /** --- Helper: safely resolve API base across build tools (CRA / Vite / plain) --- */
-// ✅ Safe cross-env resolver — works in both CRA, Vite, and plain setups
 const resolveApiBase = () => {
   try {
-    // CRA-style environment variable
     if (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_BASE) {
       return process.env.REACT_APP_API_BASE;
     }
-
-    // Vite-style (use import.meta.env safely)
     if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE) {
       return import.meta.env.VITE_API_BASE;
     }
-
-    // Runtime override (optional, for quick local debugging)
     if (typeof window !== "undefined" && window.__API_BASE__) {
       return window.__API_BASE__;
     }
-
-    // Default fallback
     return "http://localhost:5000";
   } catch (err) {
     console.warn("⚠️ Could not resolve API base, using default localhost:", err);
     return "http://localhost:5000";
   }
 };
-
 
 const SUGGESTED_GOALS = [
   "Data Scientist",
@@ -54,15 +39,29 @@ const SUGGESTED_GOALS = [
   "Game Developer",
 ];
 
-function RoadmapItem({ step, defaultCollapsed = false }) {
+function RoadmapItem({ step, defaultCollapsed = false, isOpen: controlledIsOpen, onToggle, highlighted }) {
   const [open, setOpen] = useState(!defaultCollapsed);
+
+  useEffect(() => {
+    if (typeof controlledIsOpen === "boolean") {
+      setOpen(controlledIsOpen);
+    }
+  }, [controlledIsOpen]);
+
+  const toggle = () => {
+    if (typeof onToggle === "function") {
+      onToggle(!open);
+    }
+    setOpen((s) => !s);
+  };
+
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="relative"
+      className={`relative ${highlighted ? "ring-4 ring-yellow-300/60 rounded-lg" : ""}`}
     >
       <div className="flex gap-4">
         <div className="flex flex-col items-center">
@@ -81,7 +80,7 @@ function RoadmapItem({ step, defaultCollapsed = false }) {
 
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setOpen((s) => !s)}
+                onClick={toggle}
                 aria-expanded={open}
                 className="px-3 py-1 rounded-md text-sm bg-gray-100 dark:bg-gray-700 hover:opacity-90"
               >
@@ -133,8 +132,8 @@ export default function Roadmap() {
   const wrapperRef = useRef(null);
   const inputRef = useRef(null);
 
-  // abort controller for requests
-  const abortRef = useRef(null);
+  // abort controller for requests (support axios signal and legacy cancel token)
+  const abortRef = useRef({ controller: null, cancelSource: null });
 
   // debounce timer
   const debounceRef = useRef(null);
@@ -142,6 +141,14 @@ export default function Roadmap() {
   // test modal
   const [showTest, setShowTest] = useState(false);
   const [answers, setAnswers] = useState({});
+
+  // controlled expansion state — syncs chart clicks with cards
+  const [expandedIndex, setExpandedIndex] = useState(null);
+
+  // highlight + toast
+  const [highlightedIndex, setHighlightedIndex] = useState(null);
+  const [toast, setToast] = useState("");
+  const toastTimerRef = useRef(null);
 
   // --- dropdown & outside click ---
   useEffect(() => {
@@ -157,7 +164,7 @@ export default function Roadmap() {
 
   // --- debounce input for suggestions ---
   const applyFilter = useCallback((value) => {
-    if (!value.trim()) {
+    if (!value || !value.trim()) {
       setFilteredGoals([]);
       setShowDropdown(false);
       setHighlightIndex(-1);
@@ -172,7 +179,7 @@ export default function Roadmap() {
   const handleInputChange = (e) => {
     const v = e.target.value;
     setGoal(v);
-    clearTimeout(debounceRef.current);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => applyFilter(v), 180);
   };
 
@@ -182,7 +189,7 @@ export default function Roadmap() {
       setHighlightIndex(-1);
       return;
     }
-    setFilteredGoals(goal.trim() ? SUGGESTED_GOALS.filter(s => s.toLowerCase().includes(goal.toLowerCase())) : SUGGESTED_GOALS.slice());
+    setFilteredGoals(goal.trim() ? SUGGESTED_GOALS.filter((s) => s.toLowerCase().includes(goal.toLowerCase())) : SUGGESTED_GOALS.slice());
     setShowDropdown(true);
     setTimeout(() => inputRef.current?.focus(), 0);
   };
@@ -192,6 +199,7 @@ export default function Roadmap() {
     setFilteredGoals([]);
     setShowDropdown(false);
     setHighlightIndex(-1);
+    inputRef.current?.focus();
   };
 
   const handleKeyDown = (e) => {
@@ -205,13 +213,13 @@ export default function Roadmap() {
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlightIndex((prev) => (prev + 1) % filteredGoals.length);
+      setHighlightIndex((prev) => Math.min(prev + 1, filteredGoals.length - 1));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlightIndex((prev) => (prev - 1 + filteredGoals.length) % filteredGoals.length);
+      setHighlightIndex((prev) => Math.max(prev - 1, 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (highlightIndex >= 0) handleSelectGoal(filteredGoals[highlightIndex]);
+      if (highlightIndex >= 0 && filteredGoals[highlightIndex]) handleSelectGoal(filteredGoals[highlightIndex]);
     } else if (e.key === "Escape") {
       setShowDropdown(false);
       setHighlightIndex(-1);
@@ -220,11 +228,7 @@ export default function Roadmap() {
 
   // --- Test modal helpers ---
   const questions = [
-    {
-      id: 1,
-      question: "How comfortable are you with fundamental concepts in this field?",
-      options: ["Not at all", "Somewhat", "Very comfortable"],
-    },
+    { id: 1, question: "How comfortable are you with fundamental concepts in this field?", options: ["Not at all", "Somewhat", "Very comfortable"] },
     { id: 2, question: "How much hands-on experience do you have?", options: ["None", "Some small projects", "Extensive experience"] },
     { id: 3, question: "Can you work independently on tasks related to this goal?", options: ["Not yet", "With some guidance", "Yes, easily"] },
   ];
@@ -268,49 +272,55 @@ export default function Roadmap() {
     setError("");
     setLoading(true);
     setRoadmap([]);
+    setExpandedIndex(null);
 
-    // abort previous request
-    if (abortRef.current) {
-      try {
-        abortRef.current.abort();
-      } catch (e) {}
+    // abort previous
+    try {
+      if (abortRef.current.controller) abortRef.current.controller.abort();
+      if (abortRef.current.cancelSource) abortRef.current.cancelSource.cancel("new-request");
+    } catch (e) {
+      // ignore
     }
-    abortRef.current = new AbortController();
+
+    // create new aborts
+    const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const cancelSource = axios.CancelToken ? axios.CancelToken.source() : null;
+    abortRef.current = { controller, cancelSource };
 
     try {
       const baseURL = resolveApiBase();
-      const url = `${baseURL}/api/roadmap/generateRoadmap`;
+      const url = `${baseURL}/api/roadmaps/generate`;
 
-      const payload = {
-        career: goal,
-        level,
-      };
+      const payload = { career: goal, level };
 
-      const res = await axios.post(url, payload, { signal: abortRef.current.signal, timeout: 60000 });
-      const steps = Array.isArray(res.data.steps) ? res.data.steps : res.data;
+      const axiosConfig = { timeout: 60000 };
+      if (controller) axiosConfig.signal = controller.signal;
+      if (cancelSource) axiosConfig.cancelToken = cancelSource.token;
+
+      const res = await axios.post(url, payload, axiosConfig);
+      const steps = res.data?.roadmap || res.data?.steps || (Array.isArray(res.data) ? res.data : null);
+
       if (!Array.isArray(steps) || steps.length === 0) {
-        setError(res.data.message || "No roadmap steps returned. Try a different goal or try again later.");
+        setError(res.data?.message || "No roadmap steps returned. Try a different goal or try again later.");
         setRoadmap([]);
       } else {
         const normalized = steps.map((s, i) => ({
-          title: s.title || s.name || `Step ${i + 1}`,
-          description: s.description || s.desc || s.text || "No description provided.",
-          estimatedTime: s.estimatedTime || s.time || s.eta || "",
+          title: s.title || s.phase || s.name || `Step ${i + 1}`,
+          description: s.description || s.desc || s.summary || s.text || "No description provided.",
+          estimatedTime: s.estimatedTime || s.duration || s.time || s.eta || "Unspecified",
           substeps: s.substeps || s.tasks || [],
         }));
         setRoadmap(normalized);
       }
     } catch (err) {
-      if (axios.isCancel(err) || err.name === "CanceledError") {
+      if (axios.isCancel && axios.isCancel(err)) {
         console.log("Request canceled");
+      } else if (err.name === "CanceledError") {
+        console.log("Request canceled (fetch-like)");
       } else if (err.code === "ECONNABORTED") {
         setError("Request timed out. Try again.");
       } else {
-        const message =
-          err?.response?.data?.message ||
-          err?.response?.data?.error ||
-          err?.message ||
-          "Failed to generate roadmap. Please try again.";
+        const message = err?.response?.data?.message || err?.response?.data?.error || err?.message || "Failed to generate roadmap. Please try again.";
         setError(message);
         console.error(err);
       }
@@ -322,8 +332,12 @@ export default function Roadmap() {
   // cleanup on unmount
   useEffect(() => {
     return () => {
-      clearTimeout(debounceRef.current);
-      if (abortRef.current) try { abortRef.current.abort(); } catch (e) {}
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      try {
+        if (abortRef.current.controller) abortRef.current.controller.abort();
+        if (abortRef.current.cancelSource) abortRef.current.cancelSource.cancel("unmount");
+      } catch (e) {}
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
   }, []);
 
@@ -333,23 +347,15 @@ export default function Roadmap() {
       setError("Generate a roadmap first to share it.");
       return;
     }
-    const payload = {
-      title: `Roadmap: ${goal}`,
-      roadmap,
-    };
+    const payload = { title: `Roadmap: ${goal}`, roadmap };
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: `Roadmap — ${goal}`,
-          text: `Here's my roadmap for ${goal}.`,
-          url: window.location.href,
-        });
+        await navigator.share({ title: `Roadmap — ${goal}`, text: `Here's my roadmap for ${goal}.`, url: window.location.href });
       } catch (e) {
         console.log("Share cancelled or failed", e);
       }
       return;
     }
-
     try {
       await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
       alert("Roadmap copied to clipboard (JSON). You can paste it in a document or chat.");
@@ -364,16 +370,89 @@ export default function Roadmap() {
         setError("Generate a roadmap first to save it.");
         return;
       }
+
+      const inferredUserId =
+        (typeof window !== "undefined" && window.__USER_ID__) ||
+        (typeof localStorage !== "undefined" && localStorage.getItem("userId")) ||
+        null;
+
+      const steps = roadmap.map((s) => ({
+        title: s.title || s.name || "Untitled step",
+        description: s.description || s.desc || s.text || "",
+        estimatedTime: s.estimatedTime || s.time || s.eta || "Unspecified",
+      }));
+
       const baseURL = resolveApiBase();
-      await axios.post(`${baseURL}/api/roadmap/save`, { goal, level, roadmap });
-      alert("Roadmap saved (backend endpoint returned success).");
-    } catch (e) {
-      setError(e?.response?.data?.message || "Save failed. Make sure your backend /api/roadmap/save exists.");
+      const payload = { goal, steps, ...(inferredUserId ? { userId: inferredUserId } : {}) };
+
+      const res = await axios.post(`${baseURL}/api/roadmaps/save`, payload, { timeout: 30000 });
+
+      console.log("Save response:", res.status, res.data);
+
+      if (res.status === 201 || res.status === 200) {
+        alert("Roadmap saved successfully.");
+      } else {
+        alert(res.data?.message || "Save completed (check server response).");
+      }
+    } catch (err) {
+      if (err.response) {
+        console.error("Save failed - response:", { status: err.response.status, data: err.response.data, url: err.config?.url });
+        setError(err.response.data?.message || `Save failed (server ${err.response.status})`);
+      } else if (err.request) {
+        console.error("Save failed - no response:", err.request);
+        setError("No response from server. Is the backend running?");
+      } else {
+        console.error("Save failed:", err.message);
+        setError(err.message || "Save failed due to an unknown error.");
+      }
     }
+  };
+
+  // Chart point click handler — opens the corresponding card, highlights it and shows a toast
+  const onChartPointClick = (index) => {
+    if (typeof index !== "number") return;
+
+    setExpandedIndex((prev) => (prev === index ? null : index));
+
+    // highlight the card briefly
+    setHighlightedIndex(index);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => setHighlightedIndex(null), 1200);
+
+    // scroll the corresponding element into view
+    setTimeout(() => {
+      const el = document.querySelector(`#roadmap-item-${index}`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 80);
+
+    // small toast feedback using framer-motion UI
+    setToast(`Opened phase ${index + 1}`);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      setToast("");
+      toastTimerRef.current = null;
+    }, 1600);
   };
 
   return (
     <>
+      {/* Animated toast (framer-motion) */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            key="roadmap-toast"
+            initial={{ opacity: 0, y: -8, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="fixed left-1/2 transform -translate-x-1/2 top-6 z-50"
+            aria-live="polite"
+          >
+            <div className="bg-black text-white px-4 py-2 rounded shadow-lg">{toast}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col items-center px-4 py-10">
         <div className="max-w-4xl w-full space-y-8">
           <h1 className="text-3xl font-bold text-center">🎯 AI Career Roadmap Generator</h1>
@@ -419,6 +498,7 @@ export default function Roadmap() {
                   ) : (
                     filteredGoals.map((g, i) => (
                       <div
+                        id={`suggest-${i}`}
                         key={`${g}-${i}`}
                         role="option"
                         aria-selected={highlightIndex === i}
@@ -492,20 +572,12 @@ export default function Roadmap() {
                 )}
               </button>
 
-              <button
-                onClick={handleShare}
-                title="Share roadmap"
-                className="px-4 py-3 rounded-xl border flex items-center gap-2"
-              >
+              <button onClick={handleShare} title="Share roadmap" className="px-4 py-3 rounded-xl border flex items-center gap-2">
                 <Share2 className="w-4 h-4" />
                 Share
               </button>
 
-              <button
-                onClick={handleSave}
-                title="Save roadmap (backend required)"
-                className="px-4 py-3 rounded-xl border flex items-center gap-2"
-              >
+              <button onClick={handleSave} title="Save roadmap (backend required)" className="px-4 py-3 rounded-xl border flex items-center gap-2">
                 <Save className="w-4 h-4" />
                 Save
               </button>
@@ -514,16 +586,33 @@ export default function Roadmap() {
             {error && <p className="text-red-500 text-center">{error}</p>}
           </div>
 
-          {/* Roadmap timeline */}
+          {/* Roadmap timeline + chart */}
           <div className="mt-6">
             {roadmap.length === 0 ? (
               <div className="text-center text-gray-500 dark:text-gray-400">No roadmap yet — generate one to get started.</div>
             ) : (
               <div className="space-y-6">
                 <h2 className="text-2xl font-semibold text-center">🗺️ Your Roadmap for {goal}</h2>
+
+                {/* Chart overview (uses recharts) */}
                 <div className="mt-4">
+                  <RoadmapChart steps={roadmap} height={320} onPointClick={onChartPointClick} />
+                </div>
+
+                {/* Detailed timeline (cards) — clickable and controlled by expandedIndex */}
+                <div className="mt-6 space-y-4">
                   {roadmap.map((s, idx) => (
-                    <RoadmapItem key={idx} step={s} defaultCollapsed={idx > 0} />
+                    <div id={`roadmap-item-${idx}`} key={idx} className={`transition-all ${highlightedIndex === idx ? "animate-pulse" : ""}`}>
+                      <RoadmapItem
+                        step={s}
+                        defaultCollapsed={idx > 0}
+                        isOpen={expandedIndex === idx}
+                        onToggle={(nextOpen) => {
+                          setExpandedIndex(nextOpen ? idx : null);
+                        }}
+                        highlighted={highlightedIndex === idx}
+                      />
+                    </div>
                   ))}
                 </div>
               </div>
@@ -532,21 +621,11 @@ export default function Roadmap() {
         </div>
       </div>
 
-      {/* Inline Test Modal (kept from your design) */}
+      {/* Inline Test Modal */}
       <AnimatePresence>
         {showTest && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              className="bg-white dark:bg-gray-900 rounded-xl p-6 w-full max-w-lg mx-4"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-            >
+          <motion.div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <motion.div className="bg-white dark:bg-gray-900 rounded-xl p-6 w-full max-w-lg mx-4" initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}>
               <h3 className="text-lg font-semibold mb-4 text-center">🧠 Quick Skill Assessment</h3>
               <div className="space-y-4">
                 {questions.map((q) => (
@@ -554,13 +633,7 @@ export default function Roadmap() {
                     <p className="font-medium mb-2">{q.question}</p>
                     <div className="flex flex-wrap gap-2">
                       {q.options.map((opt) => (
-                        <button
-                          key={opt}
-                          onClick={() => handleAnswer(q.id, opt)}
-                          className={`px-3 py-2 rounded-lg border transition cursor-pointer ${
-                            answers[q.id] === opt ? "bg-blue-600 text-white border-blue-600" : "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700"
-                          }`}
-                        >
+                        <button key={opt} onClick={() => handleAnswer(q.id, opt)} className={`px-3 py-2 rounded-lg border transition cursor-pointer ${answers[q.id] === opt ? "bg-blue-600 text-white border-blue-600" : "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700"}`}>
                           {opt}
                         </button>
                       ))}

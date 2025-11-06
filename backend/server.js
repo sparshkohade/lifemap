@@ -37,7 +37,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/goals", goalRoutes);
 app.use("/api/quiz", quizRoutes);
-app.use("/api/roadmap", roadmapRoutes);
+app.use("/api/roadmaps", roadmapRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/groups", groupsRoutes); // <-- groups API

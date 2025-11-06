@@ -10,7 +10,7 @@ const MONGO_URI = process.env.MONGO_URI || "mongodb://localhost:27017/lifemap";
 const uploadsDir = path.join(process.cwd(), "uploads", "posts"); // run from backend/
 
 // adjust path to your Group model
-import Group from "../models/group.js";
+import Group from "../backend/models/group.js";
 
 async function run() {
   console.log("Connecting to DB:", MONGO_URI);
