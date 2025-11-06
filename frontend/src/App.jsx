@@ -12,6 +12,10 @@ import Goals from "./pages/Goals";
 import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile.jsx";
 import CareerTest from "./pages/CareerTest.jsx";
+import AboutUs from "./pages/AboutUs.jsx";
+import GroupDetail from "./pages/GroupDetail.jsx";
+import GroupInfo from "./pages/GroupInfo.jsx";
+
 
 export default function App() {
   return (
@@ -28,6 +32,10 @@ export default function App() {
           <Route path="/roadmap" element={<Roadmap />} />
           <Route path="/goals" element={<Goals />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/about" element={<AboutUs />} />
+          <Route path="/community/:id" element={<GroupDetail />} />
+          <Route path="/community/:id/info" element={<GroupInfo />} />
+          <Route path="/profile/:userId" element={<UserProfile />} />
           {/* FIX THIS: Maybe you meant for UserProfile to have a dynamic ID?
             e.g., <Route path="/profile/:userId" element={<UserProfile />} />
             For now, I'll remove the duplicate.
