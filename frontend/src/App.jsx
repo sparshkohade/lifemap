@@ -16,7 +16,6 @@ import AboutUs from "./pages/AboutUs.jsx";
 import GroupDetail from "./pages/GroupDetail.jsx";
 import GroupInfo from "./pages/GroupInfo.jsx";
 
-
 export default function App() {
   return (
     // <Router> <-- DELETE THIS
@@ -26,6 +25,9 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          {/* ✅ Add this route for roadmap details */}
+          <Route path="/dashboard/roadmaps/:id" element={<Roadmap />} />
+
           <Route path="/community" element={<Community />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -36,10 +38,6 @@ export default function App() {
           <Route path="/community/:id" element={<GroupDetail />} />
           <Route path="/community/:id/info" element={<GroupInfo />} />
           <Route path="/profile/:userId" element={<UserProfile />} />
-          {/* FIX THIS: Maybe you meant for UserProfile to have a dynamic ID?
-            e.g., <Route path="/profile/:userId" element={<UserProfile />} />
-            For now, I'll remove the duplicate.
-          */}
           <Route path="/test/:field" element={<CareerTest />} />
         </Routes>
       </div>

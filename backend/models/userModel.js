@@ -2,67 +2,62 @@
 import mongoose from "mongoose";
 
 // --- Sub-document Schemas ---
-// We define the nested schemas first.
-// These are NOT separate models, but structures for your arrays.
-
-// The smallest unit, as defined in your synopsis
 const taskSchema = new mongoose.Schema({
   title: { type: String, required: true },
   isCompleted: { type: Boolean, default: false },
-  // 'completedAt' will be set by the server when isCompleted is set to true
-  completedAt: { type: Date, default: null } 
+  completedAt: { type: Date, default: null },
 });
 
-// A collection of tasks, which you call a "milestone"
 const milestoneSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
-  tasks: [taskSchema] // An array of tasks
+  tasks: [taskSchema],
 });
 
-// A "Roadmap" is a collection of milestones
 const roadmapSchema = new mongoose.Schema({
   title: { type: String, required: true },
   description: String,
-  milestones: [milestoneSchema] // Your 'steps' array is now a structured 'milestones' array
+  milestones: [milestoneSchema],
 });
-
 
 // --- Main User Schema ---
-// Now we build the final User model
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String }, // for normal users
+    displayName: String, // optional duplicate for Google users
+    email: { type: String, required: true, unique: true },
+    photoURL: String,
 
-const userSchema = new mongoose.Schema({
-  // Your existing fields
-  displayName: String,
-  email: { type: String, required: true, unique: true },
-  photoURL: String,
+    // ✅ Added password (for normal auth)
+    password: {
+      type: String,
+      required: function () {
+        return !this.isGoogleUser; // required only if not Google user
+      },
+      select: false, // exclude from queries by default
+    },
 
-  // --- Gamification Fields (as planned) ---
-  currentStreak: {
-    type: Number,
-    default: 0
-  },
-  longestStreak: {
-    type: Number,
-    default: 0
-  },
-  lastTaskCompleted: { // The date of the last completed task
-    type: Date,
-    default: null
-  },
-  earnedBadges: [
-    {
-      badgeId: { type: String, required: true }, // e.g., "7-day-streak"
-      earnedAt: { type: Date, default: Date.now }
-    }
-  ],
-  
-  // --- Your Revised Roadmap Structure ---
-  roadmaps: [roadmapSchema] // Use the structured roadmapSchema
+    // ✅ Flag for Google accounts
+    isGoogleUser: {
+      type: Boolean,
+      default: false,
+    },
 
-}, { 
-  // Good practice to add timestamps
-  timestamps: true 
-});
+    // Gamification Fields
+    currentStreak: { type: Number, default: 0 },
+    longestStreak: { type: Number, default: 0 },
+    lastTaskCompleted: { type: Date, default: null },
+    earnedBadges: [
+      {
+        badgeId: { type: String, required: true },
+        earnedAt: { type: Date, default: Date.now },
+      },
+    ],
+
+    // Roadmaps
+    roadmaps: [roadmapSchema],
+  },
+  { timestamps: true }
+);
 
 export default mongoose.model("User", userSchema);

@@ -1,10 +1,9 @@
-// src/pages/Login.jsx
 import React, { useState, useContext } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import API from "../utils/api";
-import { auth, provider, signInWithPopup } from "../firebase";
 import axios from "axios";
 import { FcGoogle } from "react-icons/fc";
+import { auth, provider, signInWithPopup } from "../firebase";
+import API from "../utils/api";
 import { ThemeContext } from "../context/ThemeContext";
 
 export default function Login() {
@@ -15,35 +14,54 @@ export default function Login() {
   const navigate = useNavigate();
   const { theme } = useContext(ThemeContext);
 
-  // Normal login
+  // ✅ Helper to store user + token
+  const saveAuthData = (data) => {
+    if (!data) return;
+    if (data.token) localStorage.setItem("token", data.token);
+    if (data.user?._id || data._id)
+      localStorage.setItem("userId", data.user?._id || data._id);
+    localStorage.setItem("user", JSON.stringify(data));
+  };
+
+  // ✅ Normal email/password login
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
       const { data } = await API.post("/auth/login", { email, password });
-      localStorage.setItem("user", JSON.stringify(data));
+      saveAuthData(data);
       navigate("/goals");
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed");
+      console.error("Login failed:", err);
+      setError(err.response?.data?.message || "Invalid email or password");
     } finally {
       setLoading(false);
     }
   };
 
-  // Google login
+  // ✅ Google login
   const handleGoogleLogin = async () => {
     setError("");
     setLoading(true);
     try {
+      // 1️⃣ Sign in with Firebase popup
       const result = await signInWithPopup(auth, provider);
       const token = await result.user.getIdToken();
-      const { data } = await axios.post("http://localhost:5000/api/auth/google", { token });
-      localStorage.setItem("user", JSON.stringify(data));
+
+      // 2️⃣ Send token to your backend for verification + JWT creation
+      const { data } = await axios.post(
+        "http://localhost:5000/api/auth/google",
+        { token },
+        { withCredentials: true } // allow cookie setting
+      );
+
+      // 3️⃣ Save backend JWT & user info
+      saveAuthData(data);
       navigate("/goals");
     } catch (err) {
       console.error("Google auth failed:", err);
-      setError("Google sign-in failed");
+      setError("Google sign-in failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -51,16 +69,24 @@ export default function Login() {
 
   return (
     <div
-      className={`min-h-screen flex items-center justify-center transition-colors duration-300
-        ${theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"}`}
+      className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+        theme === "dark"
+          ? "bg-gray-900 text-gray-100"
+          : "bg-gray-50 text-gray-900"
+      }`}
     >
       <div
-        className={`p-8 rounded-xl shadow-lg w-full max-w-md transition-colors duration-300
-          ${theme === "dark" ? "bg-gray-800" : "bg-white"}`}
+        className={`p-8 rounded-xl shadow-lg w-full max-w-md transition-colors duration-300 ${
+          theme === "dark" ? "bg-gray-800" : "bg-white"
+        }`}
       >
-        <h2 className="text-2xl font-bold text-center mb-6 text-blue-600">Login</h2>
+        <h2 className="text-2xl font-bold text-center mb-6 text-blue-600">
+          Login
+        </h2>
 
-        {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+        {error && (
+          <p className="text-red-500 mb-4 text-center font-medium">{error}</p>
+        )}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <input
@@ -105,7 +131,7 @@ export default function Login() {
           <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
         </div>
 
-        {/* Google login button */}
+        {/* ✅ Google Login Button */}
         <button
           onClick={handleGoogleLogin}
           disabled={loading}

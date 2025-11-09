@@ -1,145 +1,55 @@
 // backend/routes/roadmapRoutes.js
 import express from "express";
+import { protect } from "../middleware/authMiddleware.js";
+import checkOwnership from "../middleware/checkOwnership.js";
+import * as roadmapController from "../controllers/roadmapController.js";
 
 const router = express.Router();
 
 /**
- * Simple heuristic generator for demo/dev usage.
- * In production, replace with real generation logic (AI, DB, templates).
+ * Public generation & helper endpoints
+ * Keep these first (they are named routes and should not be shadowed by /:id)
  */
-function generateDemoRoadmap({ career = "Full Stack Developer", level = "beginner" } = {}) {
-  const baseSteps = [
-    {
-      title: "Foundation: CS & JavaScript",
-      description: "Learn programming fundamentals, JavaScript basics, and developer tooling.",
-      estimatedTime: "4-8 weeks",
-      substeps: ["Variables, control flow, functions", "DOM & basic web APIs", "Git & CLI basics"],
-      progress: 10,
-    },
-    {
-      title: "Frontend: HTML, CSS, React",
-      description: "Build modern UIs with React and component-based architecture.",
-      estimatedTime: "6-10 weeks",
-      substeps: ["Semantic HTML & responsive CSS", "React fundamentals", "State management (context/hooks)"],
-      progress: 30,
-    },
-    {
-      title: "Backend: Node.js & Databases",
-      description: "APIs, persistence, and server-side concepts using Node and MongoDB.",
-      estimatedTime: "6-10 weeks",
-      substeps: ["Express APIs", "MongoDB basics & Mongoose", "Authentication & authorization"],
-      progress: 55,
-    },
-    {
-      title: "Deployment & DevOps basics",
-      description: "Deploy apps, manage environments, CI/CD basics, and cloud fundamentals.",
-      estimatedTime: "3-6 weeks",
-      substeps: ["Docker basics", "Deploy to Heroku / Vercel / AWS", "CI pipeline (GitHub Actions)"],
-      progress: 75,
-    },
-    {
-      title: "Portfolio & Interview Prep",
-      description: "Polish projects, prepare for interviews and system design basics.",
-      estimatedTime: "2-6 weeks",
-      substeps: ["Build 2-3 portfolio projects", "DSA practice", "Mock interviews"],
-      progress: 95,
-    },
-  ];
+router.post("/generate", roadmapController.generateRoadmap);
+router.post("/recommendations", roadmapController.recommendations);
+router.get("/latest", roadmapController.latestDemo);
 
-  // small adjustments by level
-  if (level === "intermediate") {
-    baseSteps[0].estimatedTime = "2-4 weeks";
-    baseSteps[1].estimatedTime = "4-8 weeks";
-  } else if (level === "expert") {
-    baseSteps[0].estimatedTime = "1-2 weeks";
-    baseSteps[1].estimatedTime = "2-4 weeks";
-    baseSteps[2].estimatedTime = "3-6 weeks";
-  }
-
-  return {
-    career,
-    level,
-    generatedAt: new Date().toISOString(),
-    roadmap: baseSteps,
-  };
-}
+// Node details used by frontend when clicking a node
+router.get("/nodes/:id", roadmapController.getNodeDetails);
 
 /**
- * Local keyword -> suggestion mapping (fallback).
- * You can extend these to call external APIs or a DB of curated resources.
+ * Demo / utility endpoints
+ * (kept public — adjust protect() if you want them protected)
  */
-function recommendationsForTopic(topic = "") {
-  const t = (topic || "").toLowerCase();
-  const out = [];
-
-  function push(title, provider, type = "course", url = null) {
-    out.push({ title, provider, type, url });
-  }
-
-  if (/react|frontend|ui|html|css/.test(t)) {
-    push("Modern React with Redux", "Udemy", "course", "https://www.udemy.com/");
-    push("Meta Front-End Developer Professional Certificate", "Coursera", "certification", "https://www.coursera.org/");
-    push("CSS - The Complete Guide", "Udemy", "course", "https://www.udemy.com/");
-  }
-
-  if (/node|backend|express|api/.test(t)) {
-    push("The Complete Node.js Developer Course", "Udemy", "course", "https://www.udemy.com/");
-    push("Node.js, Express, MongoDB & More: The Complete Bootcamp", "Udemy", "course", "https://www.udemy.com/");
-  }
-
-  if (/mongo|database|sql|nosql/.test(t)) {
-    push("MongoDB Basics", "MongoDB University", "course", "https://university.mongodb.com/");
-    push("MongoDB Certified Developer Associate", "MongoDB", "certification", "https://www.mongodb.com/");
-  }
-
-  if (/aws|cloud|devops|deployment|docker/.test(t)) {
-    push("AWS Certified Solutions Architect – Associate", "AWS", "certification", "https://aws.amazon.com/certification/");
-    push("Docker for Developers", "Udemy", "course", "https://www.udemy.com/");
-  }
-
-  if (/ml|machine|ai|tensorflow|pytorch/.test(t)) {
-    push("Machine Learning (Andrew Ng)", "Coursera", "course", "https://www.coursera.org/learn/machine-learning");
-    push("TensorFlow Developer Certificate", "TensorFlow", "certification", "https://www.tensorflow.org/certificate");
-  }
-
-  // fallback
-  if (!out.length) {
-    push("Data Structures & Algorithms (self-paced)", "Coursera / GeeksforGeeks", "course");
-    push("Professional Portfolio & Interview Prep", "Coursera / Udacity", "course");
-  }
-
-  return out;
-}
+router.post("/demo/generate", roadmapController.generateDemoRoadmap);
 
 /**
- * POST /api/roadmaps/generate
- * Body: { career, level }  (optional)
- * Returns an example generated roadmap (replace with your generation logic).
+ * Save / list user roadmaps
+ * - Save is protected in your original file; keep it protected (you can remove protect if you want anonymous saves)
+ * - User list is protected
  */
-router.post("/generate", (req, res) => {
-  const { career, level } = req.body || {};
-  const data = generateDemoRoadmap({ career: career || "Full Stack Developer", level: level || "beginner" });
-  return res.status(200).json(data);
-});
+router.post("/save", protect, roadmapController.saveRoadmap);
+router.get("/user/:userId", protect, roadmapController.getUserRoadmaps);
 
 /**
- * POST /api/roadmaps/recommendations
- * Body: { topic: string }
- * Returns curated suggestions for courses/certifications.
+ * Quiz endpoints (protected in original file)
  */
-router.post("/recommendations", (req, res) => {
-  const topic = (req.body && req.body.topic) || "";
-  const suggestions = recommendationsForTopic(topic);
-  return res.status(200).json({ topic, suggestions });
-});
+router.post("/generate-quiz", protect, roadmapController.generateQuiz);
+router.post("/evaluate-quiz", protect, roadmapController.evaluateQuiz);
 
 /**
- * GET /api/roadmaps/latest
- * Optional: return a demo roadmap for the chart when user hasn't generated one yet.
+ * Gantt endpoint(s) — place before the param `/:id` CRUD routes to avoid clash
  */
-router.get("/latest", (_req, res) => {
-  const demo = generateDemoRoadmap();
-  return res.status(200).json(demo.roadmap || demo);
-});
+router.get("/:id/gantt", protect, checkOwnership, roadmapController.getGanttData);
+router.post("/:id/gantt", protect, checkOwnership, roadmapController.getGanttData);
+
+/**
+ * CRUD + ownership-protected routes
+ * Keep these last so named routes (above) are matched first.
+ */
+router.post("/create", protect, roadmapController.createRoadmap);
+router.get("/:id", protect, checkOwnership, roadmapController.getRoadmap);
+router.put("/:id", protect, checkOwnership, roadmapController.updateRoadmap);
+router.delete("/:id", protect, checkOwnership, roadmapController.deleteRoadmap);
 
 export default router;

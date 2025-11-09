@@ -3,36 +3,53 @@ import express from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
+import cookieParser from "cookie-parser";
+import events from "events";
+
 import authRoutes from "./routes/authRoutes.js";
 import goalRoutes from "./routes/goalRoutes.js";
 import quizRoutes from "./routes/quizRoutes.js";
 import roadmapRoutes from "./routes/roadmapRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
-import groupsRoutes from "./routes/groups.js"; // <-- new
-// import connectDB from "./config/db.js"; // optional if you use a connect helper
+import groupsRoutes from "./routes/groups.js";
+import exportRoutes from "./routes/export.js";
 
 dotenv.config();
 
 const app = express();
 
 /**
- * Middleware
+ * CORS + Cookie parsing
+ * Allow multiple local dev origins and return per-request origin for credentials.
  */
-// Recommended single CORS config for your frontend (Vite default at :5173)
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || "http://localhost:5173";
+const FRONTEND_WHITELIST = [
+  process.env.FRONTEND_ORIGIN || "http://localhost:5173",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "http://127.0.0.1:5173",
+];
+
 app.use(
   cors({
-    origin: FRONTEND_ORIGIN,
+    origin: (origin, callback) => {
+      // Allow requests with no origin (curl, server-to-server)
+      if (!origin) return callback(null, true);
+      if (FRONTEND_WHITELIST.indexOf(origin) !== -1) return callback(null, true);
+      return callback(new Error("CORS: Origin not allowed"), false);
+    },
     credentials: true,
+    exposedHeaders: ["Set-Cookie"],
   })
 );
 
 app.use(express.json());
+app.use(cookieParser());
+
+events.defaultMaxListeners = 20;
 
 /**
  * Routes
- * Keep mounting order consistent with your app
  */
 app.use("/api/auth", authRoutes);
 app.use("/api/goals", goalRoutes);
@@ -40,16 +57,19 @@ app.use("/api/quiz", quizRoutes);
 app.use("/api/roadmaps", roadmapRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/tasks", taskRoutes);
-app.use("/api/groups", groupsRoutes); // <-- groups API
+app.use("/api/groups", groupsRoutes);
+app.use("/api/export", exportRoutes);
 
-// Health / test route
 app.get("/", (_req, res) => res.send("✅ LifeMap API running..."));
 
 /**
  * Error handler (basic)
  */
 app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err);
+  console.error("Unhandled error:", err.message || err);
+  if (err.message && err.message.includes("CORS")) {
+    return res.status(403).json({ error: "CORS error: origin not allowed" });
+  }
   res.status(500).json({ error: "Server error" });
 });
 
@@ -61,9 +81,7 @@ const MONGO_URI = process.env.MONGO_URI;
 
 async function start() {
   try {
-    if (!MONGO_URI) {
-      throw new Error("MONGO_URI not defined in environment");
-    }
+    if (!MONGO_URI) throw new Error("MONGO_URI not defined in environment");
 
     await mongoose.connect(MONGO_URI, {
       useNewUrlParser: true,
@@ -72,9 +90,7 @@ async function start() {
 
     console.log("✅ MongoDB connected");
 
-    const server = app.listen(PORT, () =>
-      console.log(`🚀 Server running on port ${PORT}`)
-    );
+    const server = app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
 
     // Graceful shutdown
     const shutDown = async (signal) => {
@@ -90,7 +106,6 @@ async function start() {
         }
       });
 
-      // Force exit after 10s
       setTimeout(() => {
         console.warn("Forcing exit...");
         process.exit(1);
