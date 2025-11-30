@@ -15,6 +15,8 @@ import CareerTest from "./pages/CareerTest.jsx";
 import AboutUs from "./pages/AboutUs.jsx";
 import GroupDetail from "./pages/GroupDetail.jsx";
 import GroupInfo from "./pages/GroupInfo.jsx";
+import ExamPrep from "./pages/ExamPrep.jsx"; // Import the new ExamPrep component
+import NotFound from "./pages/NotFound"; // optional fallback
 
 export default function App() {
   return (
@@ -39,6 +41,8 @@ export default function App() {
           <Route path="/community/:id/info" element={<GroupInfo />} />
           <Route path="/profile/:userId" element={<UserProfile />} />
           <Route path="/test/:field" element={<CareerTest />} />
+          <Route path="/prep" element={<ExamPrep />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
     </div>

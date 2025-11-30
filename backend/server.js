@@ -1,10 +1,10 @@
 // server.js
+import 'dotenv/config'; // loads .env automatically for ESM
 import express from "express";
-import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-import events from "events";
+import { EventEmitter } from "events";
 
 import authRoutes from "./routes/authRoutes.js";
 import goalRoutes from "./routes/goalRoutes.js";
@@ -14,10 +14,12 @@ import userRoutes from "./routes/userRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
 import groupsRoutes from "./routes/groups.js";
 import exportRoutes from "./routes/export.js";
-
-dotenv.config();
+import examPrepRoutes from './routes/examPrepRoutes.js';
 
 const app = express();
+
+// Increase EventEmitter default listeners (avoid MaxListeners warnings in dev)
+EventEmitter.defaultMaxListeners = Number(process.env.DEFAULT_MAX_LISTENERS || 20);
 
 /**
  * CORS + Cookie parsing
@@ -43,10 +45,23 @@ app.use(
   })
 );
 
-app.use(express.json());
+// Limit the JSON body size to protect from huge requests
+app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
-events.defaultMaxListeners = 20;
+// Simple request logging (safe truncation for bodies)
+app.use((req, res, next) => {
+  console.log(`--> ${req.method} ${req.originalUrl}`);
+  if (["POST", "PUT", "PATCH"].includes(req.method) && req.body) {
+    try {
+      const s = JSON.stringify(req.body);
+      console.log("Body:", s.length > 2000 ? s.slice(0, 2000) + '... [truncated]' : s);
+    } catch (e) {
+      console.log("Body: <unserializable>");
+    }
+  }
+  next();
+});
 
 /**
  * Routes
@@ -59,25 +74,34 @@ app.use("/api/user", userRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/groups", groupsRoutes);
 app.use("/api/export", exportRoutes);
+app.use('/api/examprep', examPrepRoutes);
 
 app.get("/", (_req, res) => res.send("✅ LifeMap API running..."));
 
 /**
- * Error handler (basic)
+ * Error handler (dev-friendly)
  */
 app.use((err, req, res, next) => {
-  console.error("Unhandled error:", err.message || err);
-  if (err.message && err.message.includes("CORS")) {
+  // Log full error in server
+  console.error("Unhandled error:", err && (err.stack || err.message || err));
+
+  // Handle CORS origin error explicitly
+  if (err && err.message && err.message.includes("CORS")) {
     return res.status(403).json({ error: "CORS error: origin not allowed" });
   }
-  res.status(500).json({ error: "Server error" });
+
+  const dev = (process.env.NODE_ENV || 'development') === 'development';
+  const payload = { error: err?.message || 'Server error' };
+  if (dev) payload.stack = err?.stack;
+
+  res.status(err?.status || 500).json(payload);
 });
 
 /**
  * DB connection & server start
  */
 const PORT = process.env.PORT || 5000;
-const MONGO_URI = process.env.MONGO_URI;
+const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 
 async function start() {
   try {
@@ -114,6 +138,15 @@ async function start() {
 
     process.on("SIGINT", () => shutDown("SIGINT"));
     process.on("SIGTERM", () => shutDown("SIGTERM"));
+
+    // Catch unhandled rejections / exceptions and log (avoid silent failures)
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    });
+    process.on('uncaughtException', (err) => {
+      console.error('Uncaught Exception:', err);
+      // optionally exit or let the graceful handler manage it
+    });
   } catch (err) {
     console.error("❌ DB Error:", err);
     process.exit(1);

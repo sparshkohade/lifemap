@@ -1,5 +1,5 @@
 import React, { useState, useContext } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import axios from "axios";
 import { FcGoogle } from "react-icons/fc";
 import { auth, provider, signInWithPopup } from "../firebase";
@@ -12,18 +12,32 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme } = useContext(ThemeContext);
 
-  // ✅ Helper to store user + token
+  // Save user + token robustly
   const saveAuthData = (data) => {
     if (!data) return;
-    if (data.token) localStorage.setItem("token", data.token);
-    if (data.user?._id || data._id)
-      localStorage.setItem("userId", data.user?._id || data._id);
-    localStorage.setItem("user", JSON.stringify(data));
+    // If backend returns { user: {...}, token: '...' } use that
+    const user = data.user || data;
+    const token = data.token || data.jwt || null;
+
+    if (token) localStorage.setItem("token", token);
+    if (user?._id) localStorage.setItem("userId", user._id);
+    // store a clean user object (not the whole response wrapper)
+    localStorage.setItem("user", JSON.stringify(user));
   };
 
-  // ✅ Normal email/password login
+  // Helper to go to home (explicit replace to avoid history back)
+  const goHome = () => {
+    // If you *do* want to respect a prior protected redirect, you can use:
+    // const from = location.state?.from?.pathname;
+    // navigate(from || "/", { replace: true });
+    // But per your request, always go to Home:
+    navigate("/", { replace: true });
+  };
+
+  // Normal email/password login
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
@@ -31,7 +45,7 @@ export default function Login() {
     try {
       const { data } = await API.post("/auth/login", { email, password });
       saveAuthData(data);
-      navigate("/goals");
+      goHome();
     } catch (err) {
       console.error("Login failed:", err);
       setError(err.response?.data?.message || "Invalid email or password");
@@ -40,25 +54,22 @@ export default function Login() {
     }
   };
 
-  // ✅ Google login
+  // Google login
   const handleGoogleLogin = async () => {
     setError("");
     setLoading(true);
     try {
-      // 1️⃣ Sign in with Firebase popup
       const result = await signInWithPopup(auth, provider);
       const token = await result.user.getIdToken();
 
-      // 2️⃣ Send token to your backend for verification + JWT creation
       const { data } = await axios.post(
         "http://localhost:5000/api/auth/google",
         { token },
-        { withCredentials: true } // allow cookie setting
+        { withCredentials: true }
       );
 
-      // 3️⃣ Save backend JWT & user info
       saveAuthData(data);
-      navigate("/goals");
+      goHome();
     } catch (err) {
       console.error("Google auth failed:", err);
       setError("Google sign-in failed. Please try again.");
@@ -70,9 +81,7 @@ export default function Login() {
   return (
     <div
       className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
-        theme === "dark"
-          ? "bg-gray-900 text-gray-100"
-          : "bg-gray-50 text-gray-900"
+        theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
       }`}
     >
       <div
@@ -80,13 +89,9 @@ export default function Login() {
           theme === "dark" ? "bg-gray-800" : "bg-white"
         }`}
       >
-        <h2 className="text-2xl font-bold text-center mb-6 text-blue-600">
-          Login
-        </h2>
+        <h2 className="text-2xl font-bold text-center mb-6 text-blue-600">Login</h2>
 
-        {error && (
-          <p className="text-red-500 mb-4 text-center font-medium">{error}</p>
-        )}
+        {error && <p className="text-red-500 mb-4 text-center font-medium">{error}</p>}
 
         <form onSubmit={handleLogin} className="space-y-4">
           <input
@@ -94,12 +99,7 @@ export default function Login() {
             placeholder="Email Address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 border rounded-lg
-                       bg-white dark:bg-gray-700
-                       border-gray-300 dark:border-gray-600
-                       text-gray-900 dark:text-gray-100
-                       placeholder-gray-400 dark:placeholder-gray-400
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
           <input
@@ -107,12 +107,7 @@ export default function Login() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 border rounded-lg
-                       bg-white dark:bg-gray-700
-                       border-gray-300 dark:border-gray-600
-                       text-gray-900 dark:text-gray-100
-                       placeholder-gray-400 dark:placeholder-gray-400
-                       focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
           <button
@@ -124,19 +119,16 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Divider */}
         <div className="flex items-center my-6">
           <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
           <p className="px-3 text-gray-500 text-sm">or</p>
           <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
         </div>
 
-        {/* ✅ Google Login Button */}
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600
-                     hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-60"
+          className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-60"
         >
           <FcGoogle size={22} />
           <span className="font-medium">Continue with Google</span>

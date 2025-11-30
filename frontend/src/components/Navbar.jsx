@@ -202,9 +202,12 @@ export default function Navbar() {
           <Link to="/" className={linkClasses("/")}>
             Home
           </Link>
-          <Link to="/goals" className={linkClasses("/goals")}>
-            Goals
+
+          {/* Replaced Goals with Prep */}
+          <Link to="/prep" className={linkClasses("/prep")}>
+            Prep
           </Link>
+
           <Link to="/roadmap" className={linkClasses("/roadmap")}>
             Roadmap
           </Link>
