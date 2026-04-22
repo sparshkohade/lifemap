@@ -1,17 +1,17 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCBMEcCWTx6CFhSUyj1Ib7311PCt6M4Jjg",
-  authDomain: "lifemap-6b8a3.firebaseapp.com",
-  projectId: "lifemap-6b8a3",
-  storageBucket: "lifemap-6b8a3.firebasestorage.app",
-  messagingSenderId: "803065785400",
-  appId: "1:803065785400:web:cd273ae4fb8b496c884acd",
-  measurementId: "G-FW5T4W93GN"
+  apiKey: "AIzaSyBpXvEpRHf3i5kgTffcX_f_GG5udMjcfxQ",  // your correct key
+  authDomain: "lifemap-ddc26.firebaseapp.com",
+  projectId: "lifemap-ddc26",
+  storageBucket: "lifemap-ddc26.appspot.com",
+  messagingSenderId: "402026251801",
+  appId: "1:402026251801:web:358dcc3441400bb1698c88",
 };
 
-const app = initializeApp(firebaseConfig);
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
