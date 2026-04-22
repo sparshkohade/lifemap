@@ -1,6 +1,7 @@
+// frontend/src/pages/Login.jsx
+
 import React, { useState, useContext } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
-import axios from "axios";
+import { useNavigate, Link } from "react-router-dom";
 import { FcGoogle } from "react-icons/fc";
 import { auth, provider, signInWithPopup } from "../firebase";
 import API from "../utils/api";
@@ -11,39 +12,40 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
   const navigate = useNavigate();
-  const location = useLocation();
   const { theme } = useContext(ThemeContext);
 
-  // Save user + token robustly
+  // 🔐 Save user + token
   const saveAuthData = (data) => {
     if (!data) return;
-    // If backend returns { user: {...}, token: '...' } use that
+
     const user = data.user || data;
     const token = data.token || data.jwt || null;
 
     if (token) localStorage.setItem("token", token);
     if (user?._id) localStorage.setItem("userId", user._id);
-    // store a clean user object (not the whole response wrapper)
+
     localStorage.setItem("user", JSON.stringify(user));
   };
 
-  // Helper to go to home (explicit replace to avoid history back)
+  // 🔁 Redirect to home
   const goHome = () => {
-    // If you *do* want to respect a prior protected redirect, you can use:
-    // const from = location.state?.from?.pathname;
-    // navigate(from || "/", { replace: true });
-    // But per your request, always go to Home:
     navigate("/", { replace: true });
   };
 
-  // Normal email/password login
+  // ✅ Email/password login
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
     setLoading(true);
+
     try {
-      const { data } = await API.post("/auth/login", { email, password });
+      const { data } = await API.post("/auth/login", {
+        email,
+        password,
+      });
+
       saveAuthData(data);
       goHome();
     } catch (err) {
@@ -54,16 +56,17 @@ export default function Login() {
     }
   };
 
-  // Google login
+  // ✅ Google login (FIXED)
   const handleGoogleLogin = async () => {
     setError("");
     setLoading(true);
+
     try {
       const result = await signInWithPopup(auth, provider);
       const token = await result.user.getIdToken();
 
-      const { data } = await axios.post(
-        "http://localhost:5000/api/auth/google",
+      const { data } = await API.post(
+        "/auth/google",
         { token },
         { withCredentials: true }
       );
@@ -81,7 +84,9 @@ export default function Login() {
   return (
     <div
       className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
-        theme === "dark" ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
+        theme === "dark"
+          ? "bg-gray-900 text-gray-100"
+          : "bg-gray-50 text-gray-900"
       }`}
     >
       <div
@@ -89,27 +94,34 @@ export default function Login() {
           theme === "dark" ? "bg-gray-800" : "bg-white"
         }`}
       >
-        <h2 className="text-2xl font-bold text-center mb-6 text-blue-600">Login</h2>
+        <h2 className="text-2xl font-bold text-center mb-6 text-blue-600">
+          Login
+        </h2>
 
-        {error && <p className="text-red-500 mb-4 text-center font-medium">{error}</p>}
+        {error && (
+          <p className="text-red-500 mb-4 text-center font-medium">{error}</p>
+        )}
 
+        {/* 🔐 Login Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <input
             type="email"
             placeholder="Email Address"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
+
           <input
             type="password"
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             required
           />
+
           <button
             type="submit"
             disabled={loading}
@@ -119,12 +131,14 @@ export default function Login() {
           </button>
         </form>
 
+        {/* Divider */}
         <div className="flex items-center my-6">
           <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
           <p className="px-3 text-gray-500 text-sm">or</p>
           <div className="flex-1 border-t border-gray-300 dark:border-gray-600"></div>
         </div>
 
+        {/* Google Login */}
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
@@ -134,6 +148,7 @@ export default function Login() {
           <span className="font-medium">Continue with Google</span>
         </button>
 
+        {/* Register */}
         <p className="mt-4 text-center text-gray-600 dark:text-gray-400">
           Don’t have an account?{" "}
           <Link to="/register" className="text-blue-600 hover:underline">
