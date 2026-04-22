@@ -3,10 +3,12 @@ import User from "../models/userModel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import admin from "firebase-admin";
-import { createRequire } from "module";
 
-const require = createRequire(import.meta.url);
-const serviceAccount = require("../config/serviceAccountKey.json");
+const serviceAccount = {
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+  privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+};
 
 if (!admin.apps.length) {
   admin.initializeApp({
